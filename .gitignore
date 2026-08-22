@@ -1,1 +1,34 @@
-venv
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual Environment
+venv/
+.venv/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploaded documents
+uploads/
+
+# ML
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Data
+data/raw/
+data/processed/
+
+# Logs
+*.log
