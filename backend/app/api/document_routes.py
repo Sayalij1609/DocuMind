@@ -32,7 +32,8 @@ repository = DocumentRepository()
 
 document_service = DocumentService(
     upload_dir=settings.upload_dir,
-    repository=repository
+    repository=repository,
+    max_file_size=settings.max_file_size
 )
 
 
