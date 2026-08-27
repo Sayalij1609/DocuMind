@@ -1,9 +1,9 @@
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.document import Document
+from app.models.document import Document ,  DocumentStatus
 
 
 class DocumentRepository:
@@ -47,13 +47,18 @@ class DocumentRepository:
 
 
     def get_all(
-        self
+        self,
+        skip: int = 0,
+        limit: int = 20
     ) -> List[Document]:
 
-        statement = select(
-            Document
-        ).order_by(
-            Document.created_at.desc()
+        statement = (
+            select(Document)
+            .order_by(
+                Document.created_at.desc()
+            )
+            .offset(skip)
+            .limit(limit)
         )
 
         return list(
@@ -61,6 +66,19 @@ class DocumentRepository:
                 statement
             ).all()
         )
+
+
+    def count(self) -> int:
+
+        statement = select(
+            func.count()
+        ).select_from(
+            Document
+        )
+
+        return self.session.scalar(
+            statement
+        ) or 0
 
 
     def delete(
@@ -73,6 +91,7 @@ class DocumentRepository:
         )
 
         if not document:
+
             return False
 
         self.session.delete(
@@ -82,3 +101,27 @@ class DocumentRepository:
         self.session.commit()
 
         return True
+
+    def update_status(
+        self,
+        document_id: str,
+        status: DocumentStatus
+    ) -> Optional[Document]:
+
+        document = self.get_by_id(
+            document_id
+        )
+
+        if not document:
+
+            return None
+
+        document.status = status
+
+        self.session.commit()
+
+        self.session.refresh(
+            document
+        )
+
+        return document

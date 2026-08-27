@@ -1,8 +1,7 @@
 from pathlib import Path
 from uuid import uuid4
-import shutil
 from datetime import datetime
-
+import logging
 from fastapi import UploadFile
 
 from app.models.document import (
@@ -14,6 +13,9 @@ from app.services.document_repository import (
     DocumentRepository
 )
 
+logger = logging.getLogger(
+    __name__
+)
 
 class DocumentService:
 
@@ -22,6 +24,21 @@ class DocumentService:
         ".jpg",
         ".jpeg",
         ".png"
+    }
+
+    ALLOWED_MIME_TYPES = {
+    ".pdf": {
+        "application/pdf"
+    },
+    ".jpg": {
+        "image/jpeg"
+    },
+    ".jpeg": {
+        "image/jpeg"
+    },
+    ".png": {
+        "image/png"
+    }
     }
 
 
@@ -46,7 +63,8 @@ class DocumentService:
 
     def validate_file(
         self,
-        filename: str
+        filename: str,
+        content_type: str | None
     ) -> str:
 
         extension = Path(
@@ -59,6 +77,17 @@ class DocumentService:
                 f"Unsupported file type: {extension}"
             )
 
+        allowed_mime_types = (
+            self.ALLOWED_MIME_TYPES[extension]
+        )
+
+        if content_type not in allowed_mime_types:
+
+            raise ValueError(
+                f"Invalid MIME type '{content_type}' "
+                f"for {extension} file."
+            )
+
         return extension
 
 
@@ -67,9 +96,15 @@ class DocumentService:
         file: UploadFile
     ) -> Document:
 
+        logger.info(
+        "Uploading document: %s",
+        file.filename
+        )
+
         # Step 1: Validate file extension
         extension = self.validate_file(
-            file.filename
+            file.filename,
+            file.content_type
         )
 
 
@@ -89,31 +124,33 @@ class DocumentService:
             safe_filename
         )
 
-
+        file_size = 0
+        
         try:
 
             # Step 5: Save uploaded file
             with file_path.open("wb") as buffer:
 
-                shutil.copyfileobj(
-                    file.file,
-                    buffer
-                )
+                while True:
 
+                    chunk = await file.read(
+                        self.CHUNK_SIZE
+                    )
 
-            # Step 6: Get actual file size
-            file_size = file_path.stat().st_size
+                    if not chunk:
+                        break
 
+                    file_size += len(chunk)
 
-            # Step 7: Check file size limit
-            if file_size > self.max_file_size:
+                    if file_size > self.max_file_size:
 
-                file_path.unlink()
+                        raise ValueError(
+                            f"File exceeds the maximum "
+                            f"allowed size of "
+                            f"{self.max_file_size / (1024 * 1024):.1f} MB."
+                        )
 
-                raise ValueError(
-                    f"File exceeds the maximum allowed size "
-                    f"of {self.max_file_size / (1024 * 1024):.1f} MB."
-                )
+                    buffer.write(chunk)
 
 
             # Step 8: Create Document object
@@ -139,12 +176,21 @@ class DocumentService:
                 document
             )
 
+            logger.info(
+                "Document uploaded successfully: %s",
+                document.document_id
+            )
 
             # Step 10: Return document
             return document
 
 
         except Exception:
+
+            logger.exception(
+                "Failed to save document: %s",
+                file.filename
+            )
 
             # Clean up file if something fails
             if file_path.exists():
@@ -164,9 +210,20 @@ class DocumentService:
         )
 
 
-    def get_all_documents(self):
+    def get_all_documents(
+        self,
+        skip: int = 0,
+        limit: int = 20
+    ):
 
-        return self.repository.get_all()
+        documents = self.repository.get_all(
+            skip=skip,
+            limit=limit
+        )
+
+        total = self.repository.count()
+
+        return documents, total
 
 
     def delete_document(
@@ -198,3 +255,14 @@ class DocumentService:
         return self.repository.delete(
             document_id
         )
+
+    def update_status(
+        self,
+        document_id: str,
+        status: DocumentStatus
+    ):
+
+        return self.repository.update_status(
+        document_id,
+        status
+    )

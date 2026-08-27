@@ -7,7 +7,7 @@ from fastapi import (
 )
 
 from sqlalchemy.orm import Session
-
+from fastapi import Query
 from app.core.config import settings
 
 from app.database.dependencies import get_db
@@ -92,18 +92,37 @@ async def upload_document(
     response_model=DocumentListResponse
 )
 async def get_documents(
+    page: int = Query(
+        default=1,
+        ge=1
+    ),
+    page_size: int = Query(
+        default=20,
+        ge=1,
+        le=100
+    ),
     service: DocumentService = Depends(
         get_document_service
     )
 ):
 
-    documents = service.get_all_documents()
+    skip = (
+        page - 1
+    ) * page_size
+
+    documents, total = (
+        service.get_all_documents(
+            skip=skip,
+            limit=page_size
+        )
+    )
 
     return {
         "documents": documents,
-        "total": len(documents)
+        "total": total,
+        "page": page,
+        "page_size": page_size
     }
-
 
 @router.get(
     "/{document_id}",
