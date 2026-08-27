@@ -1,26 +1,27 @@
 from fastapi import FastAPI
-
 from app.core.config import settings
-
+from app.api.document_routes import router as document_router
 
 app = FastAPI(
-    title=settings.APP_NAME,
-    description="Intelligent Document Intelligence Platform",
-    version=settings.APP_VERSION
+    title=settings.app_name,
+    version=settings.app_version,
+    description=(
+        "Nexora - Intelligent Document Processing "
+        "and Understanding System"
+    )
 )
 
-
+app.include_router(document_router)
 @app.get("/")
-def root():
+async def root():
     return {
-        "application": settings.APP_NAME,
-        "message": "Intelligent Document Intelligence Platform",
+        "application": settings.app_name,
+        "version": settings.app_version,
         "status": "running"
     }
 
-
 @app.get("/health")
-def health_check():
+async def health_check():
     return {
         "status": "healthy"
     }
