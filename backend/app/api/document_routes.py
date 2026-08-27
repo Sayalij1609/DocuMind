@@ -1,9 +1,25 @@
-# Document API routes
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import (
+    APIRouter,
+    UploadFile,
+    File,
+    HTTPException
+)
 
 from app.core.config import settings
-from app.schemas.document import DocumentUploadResponse
-from app.services.document_service import DocumentService
+
+from app.schemas.document import (
+    DocumentUploadResponse,
+    DocumentResponse,
+    DocumentListResponse
+)
+
+from app.services.document_service import (
+    DocumentService
+)
+
+from app.services.document_repository import (
+    DocumentRepository
+)
 
 
 router = APIRouter(
@@ -12,8 +28,11 @@ router = APIRouter(
 )
 
 
+repository = DocumentRepository()
+
 document_service = DocumentService(
-    upload_dir=settings.upload_dir
+    upload_dir=settings.upload_dir,
+    repository=repository
 )
 
 
@@ -26,15 +45,22 @@ async def upload_document(
 ):
 
     if not file.filename:
+
         raise HTTPException(
             status_code=400,
             detail="No file was provided."
         )
 
     try:
-        result = await document_service.save_document(file)
+
+        document = (
+            await document_service.save_document(
+                file
+            )
+        )
 
     except ValueError as exc:
+
         raise HTTPException(
             status_code=400,
             detail=str(exc)
@@ -42,9 +68,75 @@ async def upload_document(
 
     return {
         "message": "Document uploaded successfully",
-        "document_id": result["document_id"],
-        "filename": result["filename"],
-        "file_type": result["file_type"],
-        "file_size": result["file_size"],
-        "status": "uploaded"
+        "document_id": document.document_id,
+        "filename": document.filename,
+        "file_type": document.file_type,
+        "file_size": document.file_size,
+        "status": document.status
+    }
+
+
+@router.get(
+    "",
+    response_model=DocumentListResponse
+)
+async def get_documents():
+
+    documents = (
+        document_service.get_all_documents()
+    )
+
+    return {
+        "documents": documents,
+        "total": len(documents)
+    }
+
+
+@router.get(
+    "/{document_id}",
+    response_model=DocumentResponse
+)
+async def get_document(
+    document_id: str
+):
+
+    document = (
+        document_service.get_document(
+            document_id
+        )
+    )
+
+    if not document:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found"
+        )
+
+    return document
+
+
+@router.delete(
+    "/{document_id}"
+)
+async def delete_document(
+    document_id: str
+):
+
+    deleted = (
+        document_service.delete_document(
+            document_id
+        )
+    )
+
+    if not deleted:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found"
+        )
+
+    return {
+        "message": "Document deleted successfully",
+        "document_id": document_id
     }
