@@ -1,17 +1,31 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.models.document import Document
 
 
 class DocumentRepository:
 
-    def __init__(self):
-        self.documents: Dict[str, Document] = {}
+    def __init__(
+        self,
+        session: Session
+    ):
+
+        self.session = session
 
 
-    def create(self, document: Document) -> Document:
+    def create(
+        self,
+        document: Document
+    ) -> Document:
 
-        self.documents[document.document_id] = document
+        self.session.add(document)
+
+        self.session.commit()
+
+        self.session.refresh(document)
 
         return document
 
@@ -21,19 +35,50 @@ class DocumentRepository:
         document_id: str
     ) -> Optional[Document]:
 
-        return self.documents.get(document_id)
+        statement = select(
+            Document
+        ).where(
+            Document.document_id == document_id
+        )
+
+        return self.session.scalar(
+            statement
+        )
 
 
-    def get_all(self) -> List[Document]:
+    def get_all(
+        self
+    ) -> List[Document]:
 
-        return list(self.documents.values())
+        statement = select(
+            Document
+        ).order_by(
+            Document.created_at.desc()
+        )
+
+        return list(
+            self.session.scalars(
+                statement
+            ).all()
+        )
 
 
-    def delete(self, document_id: str) -> bool:
+    def delete(
+        self,
+        document_id: str
+    ) -> bool:
 
-        if document_id not in self.documents:
+        document = self.get_by_id(
+            document_id
+        )
+
+        if not document:
             return False
 
-        del self.documents[document_id]
+        self.session.delete(
+            document
+        )
+
+        self.session.commit()
 
         return True

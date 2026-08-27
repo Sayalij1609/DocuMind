@@ -1,24 +1,29 @@
 from fastapi import (
     APIRouter,
-    UploadFile,
+    Depends,
     File,
-    HTTPException
+    HTTPException,
+    UploadFile
 )
+
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 
-from app.schemas.document import (
-    DocumentUploadResponse,
-    DocumentResponse,
-    DocumentListResponse
-)
+from app.database.dependencies import get_db
 
-from app.services.document_service import (
-    DocumentService
+from app.schemas.document import (
+    DocumentListResponse,
+    DocumentResponse,
+    DocumentUploadResponse
 )
 
 from app.services.document_repository import (
     DocumentRepository
+)
+
+from app.services.document_service import (
+    DocumentService
 )
 
 
@@ -28,13 +33,17 @@ router = APIRouter(
 )
 
 
-repository = DocumentRepository()
+def get_document_service(
+    db: Session = Depends(get_db)
+) -> DocumentService:
 
-document_service = DocumentService(
-    upload_dir=settings.upload_dir,
-    repository=repository,
-    max_file_size=settings.max_file_size
-)
+    repository = DocumentRepository(db)
+
+    return DocumentService(
+        upload_dir=settings.upload_dir,
+        repository=repository,
+        max_file_size=settings.max_file_size
+    )
 
 
 @router.post(
@@ -42,7 +51,10 @@ document_service = DocumentService(
     response_model=DocumentUploadResponse
 )
 async def upload_document(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    service: DocumentService = Depends(
+        get_document_service
+    )
 ):
 
     if not file.filename:
@@ -55,9 +67,7 @@ async def upload_document(
     try:
 
         document = (
-            await document_service.save_document(
-                file
-            )
+            await service.save_document(file)
         )
 
     except ValueError as exc:
@@ -81,11 +91,13 @@ async def upload_document(
     "",
     response_model=DocumentListResponse
 )
-async def get_documents():
-
-    documents = (
-        document_service.get_all_documents()
+async def get_documents(
+    service: DocumentService = Depends(
+        get_document_service
     )
+):
+
+    documents = service.get_all_documents()
 
     return {
         "documents": documents,
@@ -98,13 +110,14 @@ async def get_documents():
     response_model=DocumentResponse
 )
 async def get_document(
-    document_id: str
+    document_id: str,
+    service: DocumentService = Depends(
+        get_document_service
+    )
 ):
 
-    document = (
-        document_service.get_document(
-            document_id
-        )
+    document = service.get_document(
+        document_id
     )
 
     if not document:
@@ -121,13 +134,14 @@ async def get_document(
     "/{document_id}"
 )
 async def delete_document(
-    document_id: str
+    document_id: str,
+    service: DocumentService = Depends(
+        get_document_service
+    )
 ):
 
-    deleted = (
-        document_service.delete_document(
-            document_id
-        )
+    deleted = service.delete_document(
+        document_id
     )
 
     if not deleted:

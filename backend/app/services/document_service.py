@@ -131,7 +131,6 @@ class DocumentService:
 
                 status=DocumentStatus.UPLOADED,
 
-                created_at=datetime.utcnow()
             )
 
 
