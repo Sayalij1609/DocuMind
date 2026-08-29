@@ -1,13 +1,15 @@
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     HTTPException,
+    Query,
     UploadFile
 )
 
 from sqlalchemy.orm import Session
-from fastapi import Query
+
 from app.core.config import settings
 
 from app.database.dependencies import get_db
@@ -18,12 +20,36 @@ from app.schemas.document import (
     DocumentUploadResponse
 )
 
+from app.schemas.document_content import (
+    DocumentContentResponse
+)
+
 from app.services.document_repository import (
     DocumentRepository
 )
 
 from app.services.document_service import (
     DocumentService
+)
+
+from app.services.document_content_repository import (
+    DocumentContentRepository
+)
+
+from app.services.document_processing_service import (
+    DocumentProcessingService
+)
+
+from app.processing.document_extractor import (
+    DocumentExtractor
+)
+
+from app.processing.text_cleaner import (
+    TextCleaner
+)
+
+from app.processing.pipeline import (
+    DocumentProcessingPipeline
 )
 
 
@@ -45,15 +71,49 @@ def get_document_service(
         max_file_size=settings.max_file_size
     )
 
+def get_processing_service(
+    db: Session = Depends(get_db)
+) -> DocumentProcessingService:
+
+    content_repository = (
+        DocumentContentRepository(
+            db
+        )
+    )
+
+    extractor = DocumentExtractor(
+        tesseract_cmd=settings.tesseract_cmd
+    )
+
+    cleaner = TextCleaner()
+
+    pipeline = DocumentProcessingPipeline(
+        extractor=extractor,
+        cleaner=cleaner,
+        content_repository=content_repository
+    )
+
+    repository = DocumentRepository(
+        db
+    )
+
+    return DocumentProcessingService(
+        repository=repository,
+        pipeline=pipeline
+    )
 
 @router.post(
     "/upload",
     response_model=DocumentUploadResponse
 )
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     service: DocumentService = Depends(
         get_document_service
+    ),
+    processing_service: DocumentProcessingService = Depends(
+        get_processing_service
     )
 ):
 
@@ -66,8 +126,8 @@ async def upload_document(
 
     try:
 
-        document = (
-            await service.save_document(file)
+        document = await service.save_document(
+            file
         )
 
     except ValueError as exc:
@@ -76,6 +136,11 @@ async def upload_document(
             status_code=400,
             detail=str(exc)
         )
+
+    background_tasks.add_task(
+        processing_service.process_document,
+        document.document_id
+    )
 
     return {
         "message": "Document uploaded successfully",
