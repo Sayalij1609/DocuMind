@@ -1,3 +1,11 @@
+from app.models import document_content
+from app.models import document_content
+from app.models import document_content
+from app.models import document_content
+from app.models import document_content
+from app.models import document_content
+from app.models import document_content
+from app.models import document_content
 from pathlib import Path
 from PIL import Image
 import io
@@ -146,6 +154,23 @@ class PDFProcessor:
             return "\n\n".join(
                 pages
             ).strip()
+
+        finally:
+
+            document.close()
+            
+    def get_page_count(
+        self,
+        file_path: str
+    ) -> int:
+
+        document = fitz.open(
+            file_path
+        )
+
+        try:
+
+            return len(document)
 
         finally:
 

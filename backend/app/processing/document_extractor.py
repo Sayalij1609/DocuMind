@@ -1,7 +1,14 @@
-from pathlib import Path
+from app.processing.ocr_service import (
+    OCRService
+)
 
-from app.processing.ocr_service import OCRService
-from app.processing.pdf_processor import PDFProcessor
+from app.processing.pdf_processor import (
+    PDFProcessor
+)
+
+from app.processing.result import (
+    ExtractionResult
+)
 
 
 class DocumentExtractor:
@@ -26,11 +33,9 @@ class DocumentExtractor:
         self,
         file_path: str,
         file_type: str
-    ) -> str:
+    ) -> ExtractionResult:
 
-        extension = (
-            file_type.lower()
-        )
+        extension = file_type.lower()
 
         if extension == ".pdf":
 
@@ -44,11 +49,17 @@ class DocumentExtractor:
             ".png"
         }:
 
-            return (
+            text = (
                 self.ocr_service
                 .extract_text(
                     file_path
                 )
+            )
+
+            return ExtractionResult(
+                text=text,
+                extraction_method="image_ocr",
+                page_count=1
             )
 
         raise ValueError(
@@ -60,7 +71,14 @@ class DocumentExtractor:
     def _extract_pdf(
         self,
         file_path: str
-    ) -> str:
+    ) -> ExtractionResult:
+
+        page_count = (
+            self.pdf_processor
+            .get_page_count(
+                file_path
+            )
+        )
 
         has_text = (
             self.pdf_processor
@@ -71,17 +89,29 @@ class DocumentExtractor:
 
         if has_text:
 
-            return (
+            text = (
                 self.pdf_processor
                 .extract_text(
                     file_path
                 )
             )
 
-        return (
+            return ExtractionResult(
+                text=text,
+                extraction_method="pdf_text",
+                page_count=page_count
+            )
+
+        text = (
             self.pdf_processor
             .extract_text_with_ocr(
                 file_path,
                 self.ocr_service
             )
+        )
+
+        return ExtractionResult(
+            text=text,
+            extraction_method="pdf_ocr",
+            page_count=page_count
         )
