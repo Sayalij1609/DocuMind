@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from uuid import uuid4
-
+from sqlalchemy.orm import relationship
 from sqlalchemy import DateTime, Enum as SQLEnum
 from sqlalchemy import Integer, String
 
@@ -77,4 +77,10 @@ class Document(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False
+    )
+
+    pages = relationship(
+        "DocumentPage",
+        back_populates="document",
+        cascade="all, delete-orphan"
     )
