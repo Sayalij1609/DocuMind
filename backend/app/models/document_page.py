@@ -46,6 +46,11 @@ class DocumentPage(Base):
         default=""
     )
 
+    extraction_method: Mapped[str] = mapped_column(
+        nullable=False,
+        default="unknown"
+    )   
+
     image_path: Mapped[str] = mapped_column(
         nullable=False
     )
@@ -80,3 +85,5 @@ class DocumentPage(Base):
         "Document",
         back_populates="pages"
     )
+
+    
