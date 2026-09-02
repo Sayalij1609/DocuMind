@@ -1,15 +1,9 @@
-from app.models import document_content
-from app.models import document_content
-from app.models import document_content
-from app.models import document_content
-from app.models import document_content
-from app.models import document_content
-from app.models import document_content
-from app.models import document_content
 from pathlib import Path
-from PIL import Image
 import io
+
 import fitz
+from PIL import Image
+
 
 class PDFProcessor:
 
@@ -22,6 +16,9 @@ class PDFProcessor:
             minimum_text_length
         )
 
+    # =========================================================
+    # DOCUMENT-LEVEL TEXT EXTRACTION
+    # =========================================================
 
     def extract_text(
         self,
@@ -31,14 +28,11 @@ class PDFProcessor:
         path = Path(file_path)
 
         if not path.exists():
-
             raise FileNotFoundError(
                 f"File not found: {file_path}"
             )
 
-        document = fitz.open(
-            file_path
-        )
+        document = fitz.open(file_path)
 
         try:
 
@@ -51,12 +45,17 @@ class PDFProcessor:
                 if text:
                     pages.append(text)
 
-            return "\n".join(pages).strip()
+            return "\n".join(
+                pages
+            ).strip()
 
         finally:
 
             document.close()
 
+    # =========================================================
+    # CHECK WHETHER PDF HAS ENOUGH NATIVE TEXT
+    # =========================================================
 
     def has_extractable_text(
         self,
@@ -67,9 +66,34 @@ class PDFProcessor:
             file_path
         )
 
-        return len(text.strip()) >= (
-            self.minimum_text_length
+        return len(
+            text.strip()
+        ) >= self.minimum_text_length
+
+    # =========================================================
+    # GET NUMBER OF PAGES
+    # =========================================================
+
+    def get_page_count(
+        self,
+        file_path: str
+    ) -> int:
+
+        document = fitz.open(
+            file_path
         )
+
+        try:
+
+            return len(document)
+
+        finally:
+
+            document.close()
+
+    # =========================================================
+    # RENDER PDF PAGE
+    # =========================================================
 
     def render_page(
         self,
@@ -91,6 +115,10 @@ class PDFProcessor:
 
         return pixmap
 
+    # =========================================================
+    # RENDER PAGE AS PIL IMAGE
+    # =========================================================
+
     def render_page_as_image(
         self,
         page,
@@ -109,15 +137,91 @@ class PDFProcessor:
         return Image.open(
             io.BytesIO(
                 image_bytes
+            )
         )
-    )
+
+    # =========================================================
+    # DOCUMENT-LEVEL OCR
+    #
+    # This method is required by DocumentExtractor.
+    # =========================================================
 
     def extract_text_with_ocr(
         self,
         file_path: str,
-        ocr_service,
-        dpi: int = 200
+        ocr_service
     ) -> str:
+
+        path = Path(file_path)
+
+        if not path.exists():
+            raise FileNotFoundError(
+                f"File not found: {file_path}"
+            )
+
+        document = fitz.open(
+            file_path
+        )
+
+        page_texts = []
+
+        try:
+
+            for page in document:
+
+                image = (
+                    self.render_page_as_image(
+                        page,
+                        dpi=200
+                    )
+                )
+
+                try:
+
+                    text = (
+                        ocr_service
+                        .extract_text_from_image(
+                            image
+                        )
+                    )
+
+                    if text:
+                        page_texts.append(
+                            text
+                        )
+
+                finally:
+
+                    image.close()
+
+        finally:
+
+            document.close()
+
+        return "\n\n".join(
+            page_texts
+        ).strip()
+
+    # =========================================================
+    # PAGE-LEVEL EXTRACTION
+    #
+    # Each page independently decides whether to use:
+    # PDF native text or OCR.
+    # =========================================================
+
+    def extract_pages(
+        self,
+        file_path: str,
+        ocr_service=None,
+        dpi: int = 200
+    ) -> list[dict]:
+
+        path = Path(file_path)
+
+        if not path.exists():
+            raise FileNotFoundError(
+                f"File not found: {file_path}"
+            )
 
         document = fitz.open(
             file_path
@@ -127,52 +231,83 @@ class PDFProcessor:
 
         try:
 
-            for page in document:
+            for index, page in enumerate(
+                document
+            ):
 
-                image = self.render_page_as_image(
-                    page,
-                    dpi=dpi
+                page_number = index + 1
+
+                # -----------------------------------------
+                # Try native PDF text first
+                # -----------------------------------------
+
+                text = page.get_text().strip()
+
+                extraction_method = (
+                    "pdf_text"
                 )
 
-                try:
+                # -----------------------------------------
+                # If native text is insufficient,
+                # use OCR for this individual page.
+                # -----------------------------------------
 
-                    text = (
-                    ocr_service
-                        .extract_text_from_image(
-                            image
+                if (
+                    len(text)
+                    < self.minimum_text_length
+                    and ocr_service is not None
+                ):
+
+                    ocr_image = (
+                        self.render_page_as_image(
+                            page,
+                            dpi=dpi
                         )
                     )
 
-                    if text:
+                    try:
 
-                        pages.append(text)
+                        text = (
+                            ocr_service
+                            .extract_text_from_image(
+                                ocr_image
+                            )
+                        )
 
-                finally:
+                        extraction_method = "ocr"
 
-                    image.close()
+                    finally:
 
-            return "\n\n".join(
-                pages
-            ).strip()
+                        ocr_image.close()
+
+                # -----------------------------------------
+                # Render final page image
+                # -----------------------------------------
+
+                page_image = (
+                    self.render_page_as_image(
+                        page,
+                        dpi=dpi
+                    )
+                )
+
+                # -----------------------------------------
+                # Store page information
+                # -----------------------------------------
+
+                pages.append(
+                    {
+                        "page_number": page_number,
+                        "text": text.strip(),
+                        "image": page_image,
+                        "extraction_method": (
+                            extraction_method
+                        )
+                    }
+                )
 
         finally:
 
             document.close()
-            
-    def get_page_count(
-        self,
-        file_path: str
-    ) -> int:
 
-        document = fitz.open(
-            file_path
-        )
-
-        try:
-
-            return len(document)
-
-        finally:
-
-            document.close()
-
+        return pages
