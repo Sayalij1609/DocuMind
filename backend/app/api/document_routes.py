@@ -7,6 +7,13 @@ from fastapi import (
     Query,
     UploadFile
 )
+from app.services.document_page_repository import (
+    DocumentPageRepository
+)
+
+from app.processing.page_storage import (
+    PageStorageService
+)
 
 from sqlalchemy.orm import Session
 
@@ -81,16 +88,28 @@ def get_processing_service(
         )
     )
 
+    page_repository = (
+        DocumentPageRepository(
+            db
+        )
+    )
+
     extractor = DocumentExtractor(
         tesseract_cmd=settings.tesseract_cmd
     )
 
     cleaner = TextCleaner()
 
+    page_storage = PageStorageService(
+        storage_dir="storage/pages"
+    )
+
     pipeline = DocumentProcessingPipeline(
         extractor=extractor,
         cleaner=cleaner,
-        content_repository=content_repository
+        content_repository=content_repository,
+        page_repository=page_repository,
+        page_storage=page_storage
     )
 
     repository = DocumentRepository(
