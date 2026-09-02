@@ -1,50 +1,37 @@
-from pathlib import Path
+import pytesseract
 
 from PIL import Image
-
-import pytesseract
 
 
 class OCRService:
 
     def __init__(
         self,
-        tesseract_cmd: str | None = None
+        tesseract_cmd: str = "tesseract"
     ):
 
-        if tesseract_cmd:
+        self.tesseract_cmd = (
+            tesseract_cmd
+        )
 
-            pytesseract.pytesseract.tesseract_cmd = (
-                tesseract_cmd
-            )
-
+        pytesseract.pytesseract.tesseract_cmd = (
+            tesseract_cmd
+        )
 
     def extract_text(
         self,
-        image_path: str
+        file_path: str
     ) -> str:
 
-        path = Path(
-            image_path
-        )
-
-        if not path.exists():
-
-            raise FileNotFoundError(
-                f"Image not found: {image_path}"
-            )
-
         image = Image.open(
-            image_path
+            file_path
         )
 
         try:
 
-            text = pytesseract.image_to_string(
+            return self.extract_text_from_image(
                 image
             )
-
-            return text.strip()
 
         finally:
 
