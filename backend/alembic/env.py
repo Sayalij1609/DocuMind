@@ -6,6 +6,7 @@ from app.database.base import Base
 from app.core.config import settings
 from app.models.document import Document
 from app.models.document_content import DocumentContent
+from app.models.document_page import DocumentPage
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -276,9 +276,30 @@ class PDFProcessor:
 
                         extraction_method = "ocr"
 
+                        layout = (
+                            ocr_service
+                            .extract_layout(
+                                ocr_image
+                            )
+                        )
+
                     finally:
 
                         ocr_image.close()
+
+                else:
+
+                    # -----------------------------------------
+                    # Extract layout from native PDF text
+                    # with coordinates scaled to image space
+                    # -----------------------------------------
+
+                    layout = (
+                        self.extract_page_layout(
+                            page,
+                            dpi=dpi
+                        )
+                    )
 
                 # -----------------------------------------
                 # Render final page image
@@ -302,7 +323,8 @@ class PDFProcessor:
                         "image": page_image,
                         "extraction_method": (
                             extraction_method
-                        )
+                        ),
+                        "layout": layout
                     }
                 )
 
@@ -318,8 +340,11 @@ class PDFProcessor:
 
     def extract_page_layout(
         self,
-        page
+        page,
+        dpi: int = 200
     ) -> list[dict]:
+
+        scale = dpi / 72
 
         blocks = page.get_text(
             "blocks"
@@ -337,16 +362,16 @@ class PDFProcessor:
                 continue
 
             layout.append(
-            {
-                "text": text,
-                "bbox": [
-                    round(x0, 2),
-                    round(y0, 2),
-                    round(x1, 2),
-                    round(y1, 2)
-                ],
-                "confidence": None,
-                "source": "pdf"
+                {
+                    "text": text,
+                    "bbox": [
+                        round(x0 * scale),
+                        round(y0 * scale),
+                        round(x1 * scale),
+                        round(y1 * scale)
+                    ],
+                    "confidence": None,
+                    "source": "pdf"
                 }
             )
 

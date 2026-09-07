@@ -130,6 +130,18 @@ class DocumentProcessingPipeline:
                 )
             )
 
+            layout_blocks = page_data.get(
+                "layout", []
+            )
+
+            layout_data = {
+                "blocks": layout_blocks,
+                "coordinate_system": (
+                    "image_pixels"
+                ),
+                "image_dpi": 200
+            }
+
             page = DocumentPage(
 
                 document_id=(
@@ -157,7 +169,7 @@ class DocumentProcessingPipeline:
 
                 image_height=height,
 
-                layout_data={}
+                layout_data=layout_data
             )
 
             page_models.append(
@@ -188,19 +200,33 @@ class DocumentProcessingPipeline:
                 )
             )
 
+        image = self._load_image(
+            document.file_path
+        )
+
+        text = (
+            self.extractor
+            .ocr_service
+            .extract_text_from_image(
+                image
+            )
+        )
+
+        layout = (
+            self.extractor
+            .ocr_service
+            .extract_layout(
+                image
+            )
+        )
+
         return [
             {
                 "page_number": 1,
-                "text": (
-                    self.extractor
-                    .ocr_service
-                    .extract_text(
-                        document.file_path
-                    )
-                ),
-                "image": self._load_image(
-                    document.file_path
-                )
+                "text": text,
+                "image": image,
+                "extraction_method": "image_ocr",
+                "layout": layout
             }
         ]
 
