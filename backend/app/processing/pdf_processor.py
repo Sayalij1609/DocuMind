@@ -311,3 +311,43 @@ class PDFProcessor:
             document.close()
 
         return pages
+
+    #--------------------------------
+    # Extract PDF page layout
+    #--------------------------------   
+
+    def extract_page_layout(
+        self,
+        page
+    ) -> list[dict]:
+
+        blocks = page.get_text(
+            "blocks"
+        )
+
+        layout = []
+
+        for block in blocks:
+
+            x0, y0, x1, y1, text, *_ = block
+
+            text = text.strip()
+
+            if not text:
+                continue
+
+            layout.append(
+            {
+                "text": text,
+                "bbox": [
+                    round(x0, 2),
+                    round(y0, 2),
+                    round(x1, 2),
+                    round(y1, 2)
+                ],
+                "confidence": None,
+                "source": "pdf"
+                }
+            )
+
+        return layout
