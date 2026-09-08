@@ -19,6 +19,7 @@ Thumbs.db
 
 # Uploaded documents
 uploads/
+storage/
 
 # ML
 *.pt
@@ -27,7 +28,7 @@ uploads/
 *.safetensors
 
 # Data
-data/raw/
+data/
 data/processed/
 
 # Logs
