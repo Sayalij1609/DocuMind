@@ -47,6 +47,14 @@ from app.services.document_processing_service import (
     DocumentProcessingService
 )
 
+from app.services.classification_service import (
+    ClassificationService
+)
+
+from app.ml.classification.predictor import (
+    DocumentClassifier
+)
+
 from app.processing.document_extractor import (
     DocumentExtractor
 )
@@ -77,6 +85,7 @@ def get_document_service(
         repository=repository,
         max_file_size=settings.max_file_size
     )
+
 
 def get_processing_service(
     db: Session = Depends(get_db)
@@ -116,9 +125,34 @@ def get_processing_service(
         db
     )
 
+    # --------------------------------
+    # Classification
+    # --------------------------------
+
+    classifier = DocumentClassifier(
+        confidence_threshold=(
+            settings
+            .classification_confidence_threshold
+        )
+    )
+
+    classifier.load(
+        settings.classification_model_dir
+    )
+
+    classification_service = (
+        ClassificationService(
+            classifier=classifier,
+            repository=repository
+        )
+    )
+
     return DocumentProcessingService(
         repository=repository,
-        pipeline=pipeline
+        pipeline=pipeline,
+        classification_service=(
+            classification_service
+        )
     )
 
 @router.post(

@@ -3,7 +3,7 @@ from enum import Enum
 from uuid import uuid4
 from sqlalchemy.orm import relationship
 from sqlalchemy import DateTime, Enum as SQLEnum
-from sqlalchemy import Integer, String
+from sqlalchemy import Float, Integer, String
 
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -77,6 +77,31 @@ class Document(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False
+    )
+
+
+    document_type: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        default=None
+    )
+
+
+    classification_confidence: Mapped[
+        float | None
+    ] = mapped_column(
+        Float,
+        nullable=True,
+        default=None
+    )
+
+
+    classified_at: Mapped[
+        datetime | None
+    ] = mapped_column(
+        DateTime,
+        nullable=True,
+        default=None
     )
 
     pages = relationship(

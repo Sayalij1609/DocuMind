@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -117,6 +118,43 @@ class DocumentRepository:
             return None
 
         document.status = status
+
+        self.session.commit()
+
+        self.session.refresh(
+            document
+        )
+
+        return document
+
+    def update_classification(
+        self,
+        document_id: str,
+        document_type: str,
+        confidence: float
+    ) -> Optional[Document]:
+        """
+        Update classification results on
+        a document.
+        """
+
+        document = self.get_by_id(
+            document_id
+        )
+
+        if not document:
+
+            return None
+
+        document.document_type = document_type
+
+        document.classification_confidence = (
+            confidence
+        )
+
+        document.classified_at = (
+            datetime.utcnow()
+        )
 
         self.session.commit()
 

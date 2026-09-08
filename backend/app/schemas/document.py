@@ -21,6 +21,12 @@ class DocumentResponse(BaseModel):
 
     updated_at: datetime
 
+    document_type: str | None = None
+
+    classification_confidence: float | None = None
+
+    classified_at: datetime | None = None
+
     model_config = ConfigDict(
         from_attributes=True
     )

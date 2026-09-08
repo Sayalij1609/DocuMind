@@ -13,6 +13,12 @@ class Settings(BaseSettings):
 
     tesseract_cmd: str = "tesseract"
 
+    classification_model_dir: str = (
+        "../ml/artifacts/classification"
+    )
+
+    classification_confidence_threshold: float = 0.5
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
