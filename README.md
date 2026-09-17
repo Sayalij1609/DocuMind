@@ -1,8 +1,8 @@
-# Nexora
+# Documind
 
 **Intelligent Document Processing & Document Intelligence Platform**
 
-Nexora is a production-oriented AI/ML system that accepts documents, extracts text and layout information, classifies document types, and provides structured analysis — all through a FastAPI backend with PostgreSQL storage.
+Documind is a production-oriented AI/ML system that accepts documents, extracts text and layout information, classifies document types, validates compliance rules, detects duplicates and anomalies, and provides structured analysis — all through a FastAPI backend with PostgreSQL storage and a modern React dashboard.
 
 ---
 
