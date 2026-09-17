@@ -1,0 +1,101 @@
+.search-page {
+  max-width: 1280px;
+}
+
+.search-hero {
+  margin-bottom: var(--space-6);
+}
+
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.search-hero-icon {
+  position: absolute;
+  left: var(--space-4);
+  color: var(--accent-primary);
+  pointer-events: none;
+}
+
+.search-hero-input {
+  width: 100%;
+  padding: var(--space-4) var(--space-4) var(--space-4) 48px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--surface-glass-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  outline: none;
+  transition: all var(--transition-base);
+}
+
+.search-hero-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 15px var(--accent-primary-glow);
+}
+
+.search-hero-input::placeholder {
+  color: var(--text-muted);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: var(--space-4);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-1);
+}
+
+.clear-search-btn:hover {
+  color: var(--text-primary);
+}
+
+.quick-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.chip-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-right: var(--space-2);
+}
+
+.filter-chip {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--surface-glass-border);
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-chip:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.filter-chip.active {
+  background: var(--accent-primary);
+  color: #0b0f1a;
+  font-weight: 600;
+  border-color: var(--accent-primary);
+}
+
+.search-results-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}

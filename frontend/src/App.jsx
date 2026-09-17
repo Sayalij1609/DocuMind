@@ -1,144 +1,30 @@
-import { useState } from "react";
-import { uploadDocument } from "./services/api";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout';
+import DashboardPage from './pages/DashboardPage';
+import UploadPage from './pages/UploadPage';
+import DocumentsPage from './pages/DocumentsPage';
+import DocumentDetailPage from './pages/DocumentDetailPage';
+import AnomaliesPage from './pages/AnomaliesPage';
+import DuplicatesPage from './pages/DuplicatesPage';
+import SearchPage from './pages/SearchPage';
+import QAPage from './pages/QAPage';
 
-
-function App() {
-
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadResult, setUploadResult] = useState(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-
-  const handleFileChange = (event) => {
-
-    const file = event.target.files[0];
-
-    setSelectedFile(file);
-    setUploadResult(null);
-    setError("");
-  };
-
-
-  const handleUpload = async () => {
-
-    if (!selectedFile) {
-      setError("Please select a document first.");
-      return;
-    }
-
-    try {
-
-      setLoading(true);
-      setError("");
-
-      const result = await uploadDocument(
-        selectedFile
-      );
-
-      setUploadResult(result);
-
-    } catch (err) {
-
-      setError(err.message);
-
-    } finally {
-
-      setLoading(false);
-    }
-  };
-
-
+export default function App() {
   return (
-    <div style={{ padding: "40px" }}>
-
-      <h1>Nexora</h1>
-
-      <p>
-        Intelligent Document Processing
-        & Understanding System
-      </p>
-
-
-      <input
-        type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
-        onChange={handleFileChange}
-      />
-
-
-      <br />
-      <br />
-
-
-      <button
-        onClick={handleUpload}
-        disabled={loading}
-      >
-        {loading
-          ? "Uploading..."
-          : "Upload Document"
-        }
-      </button>
-
-
-      {selectedFile && (
-        <p>
-          Selected: {selectedFile.name}
-        </p>
-      )}
-
-
-      {error && (
-        <p style={{ color: "red" }}>
-          {error}
-        </p>
-      )}
-
-
-      {uploadResult && (
-        <div>
-
-          <h2>Upload Successful</h2>
-
-          <p>
-            Document ID:
-            {" "}
-            {uploadResult.document_id}
-          </p>
-
-          <p>
-            Filename:
-            {" "}
-            {uploadResult.filename}
-          </p>
-
-          <p>
-            File Type:
-            {" "}
-            {uploadResult.file_type}
-          </p>
-
-          <p>
-            File Size:
-            {" "}
-            {uploadResult.file_size}
-            {" "}
-            bytes
-          </p>
-
-          <p>
-            Status:
-            {" "}
-            {uploadResult.status}
-          </p>
-
-        </div>
-      )}
-
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="upload" element={<UploadPage />} />
+          <Route path="documents" element={<DocumentsPage />} />
+          <Route path="documents/:id" element={<DocumentDetailPage />} />
+          <Route path="anomalies" element={<AnomaliesPage />} />
+          <Route path="duplicates" element={<DuplicatesPage />} />
+          <Route path="search" element={<SearchPage />} />
+          <Route path="qa" element={<QAPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-
-export default App;

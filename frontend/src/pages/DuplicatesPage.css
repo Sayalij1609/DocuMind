@@ -1,0 +1,29 @@
+.duplicates-page {
+  max-width: 1280px;
+}
+
+.duplicates-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--color-duplicate-bg);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-6);
+  color: var(--text-primary);
+}
+
+.duplicates-banner svg {
+  color: var(--color-duplicate);
+  flex-shrink: 0;
+}
+
+.duplicates-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
