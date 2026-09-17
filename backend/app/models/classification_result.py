@@ -1,9 +1,17 @@
+"""
+Classification result database model.
+
+Stores document classification outcomes as a dedicated first-class entity.
+"""
+
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy import Text
+from sqlalchemy import JSON
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -11,9 +19,9 @@ from sqlalchemy.orm import relationship
 from app.database.base import Base
 
 
-class DocumentContent(Base):
+class ClassificationResultModel(Base):
 
-    __tablename__ = "document_contents"
+    __tablename__ = "classification_results"
 
     id: Mapped[int] = mapped_column(
         Integer,
@@ -31,26 +39,33 @@ class DocumentContent(Base):
         index=True,
     )
 
-    raw_text: Mapped[str] = mapped_column(
-        Text,
+    document_type: Mapped[str] = mapped_column(
+        String(50),
         nullable=False,
-        default="",
+        index=True,
     )
 
-    cleaned_text: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        default="",
-    )
-
-    extraction_method: Mapped[str] = mapped_column(
+    confidence: Mapped[float] = mapped_column(
+        Float,
         nullable=False,
     )
 
-    page_count: Mapped[int] = mapped_column(
-        Integer,
+    classifier_name: Mapped[str] = mapped_column(
+        String(100),
+        default="sgd_tfidf",
         nullable=False,
-        default=1,
+    )
+
+    probabilities: Mapped[dict | None] = mapped_column(
+        JSON,
+        nullable=True,
+        default=None,
+    )
+
+    classified_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -59,16 +74,7 @@ class DocumentContent(Base):
         nullable=False,
     )
 
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-
     document = relationship(
         "Document",
-        back_populates="content",
+        back_populates="classification",
     )
-
-    

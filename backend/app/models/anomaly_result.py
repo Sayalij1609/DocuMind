@@ -1,9 +1,24 @@
+"""
+Anomaly result database model.
+
+Stores document-level anomaly detection outcomes:
+- whether the document was evaluated as an outlier (is_anomaly)
+- the continuous anomaly score
+- the decision function score
+- the full snapshot of extracted features for explainability
+- model version and detection timestamp
+"""
+
 from datetime import datetime, timezone
 
+from sqlalchemy import Boolean
 from sqlalchemy import DateTime
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy import Text
+from sqlalchemy import JSON
+from sqlalchemy import String
+
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -11,9 +26,9 @@ from sqlalchemy.orm import relationship
 from app.database.base import Base
 
 
-class DocumentContent(Base):
+class AnomalyResultModel(Base):
 
-    __tablename__ = "document_contents"
+    __tablename__ = "anomaly_results"
 
     id: Mapped[int] = mapped_column(
         Integer,
@@ -31,26 +46,39 @@ class DocumentContent(Base):
         index=True,
     )
 
-    raw_text: Mapped[str] = mapped_column(
-        Text,
+    is_anomaly: Mapped[bool] = mapped_column(
+        Boolean,
         nullable=False,
-        default="",
+        default=False,
+        index=True,
     )
 
-    cleaned_text: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        default="",
-    )
-
-    extraction_method: Mapped[str] = mapped_column(
+    anomaly_score: Mapped[float] = mapped_column(
+        Float,
         nullable=False,
     )
 
-    page_count: Mapped[int] = mapped_column(
-        Integer,
+    decision_function_score: Mapped[float] = mapped_column(
+        Float,
         nullable=False,
-        default=1,
+    )
+
+    features: Mapped[dict] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+
+    model_version: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="isolation_forest_v1",
+    )
+
+    detected_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -68,7 +96,5 @@ class DocumentContent(Base):
 
     document = relationship(
         "Document",
-        back_populates="content",
+        back_populates="anomaly",
     )
-
-    

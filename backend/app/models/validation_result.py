@@ -1,9 +1,19 @@
-from datetime import datetime, timezone
+"""
+Validation result database model.
+
+Stores the outcome of deterministic validation
+for each document. Individual rule results are
+stored as JSON in the validation_results column.
+"""
+
+from datetime import datetime
 
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy import Text
+from sqlalchemy import JSON
+from sqlalchemy import String
+
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -11,9 +21,9 @@ from sqlalchemy.orm import relationship
 from app.database.base import Base
 
 
-class DocumentContent(Base):
+class ValidationResultModel(Base):
 
-    __tablename__ = "document_contents"
+    __tablename__ = "validation_results"
 
     id: Mapped[int] = mapped_column(
         Integer,
@@ -28,47 +38,44 @@ class DocumentContent(Base):
         ),
         nullable=False,
         unique=True,
-        index=True,
     )
 
-    raw_text: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        default="",
-    )
-
-    cleaned_text: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        default="",
-    )
-
-    extraction_method: Mapped[str] = mapped_column(
+    document_type: Mapped[str] = mapped_column(
+        String(50),
         nullable=False,
     )
 
-    page_count: Mapped[int] = mapped_column(
-        Integer,
+    status: Mapped[str] = mapped_column(
+        String(20),
         nullable=False,
-        default=1,
+    )
+
+    rule_results: Mapped[dict] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+
+    validated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
+        default=datetime.utcnow,
         nullable=False,
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=False,
     )
 
     document = relationship(
         "Document",
-        back_populates="content",
+        back_populates="validation",
     )
-
-    
