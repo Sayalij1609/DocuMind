@@ -11,7 +11,7 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description=(
-        "Nexora - Intelligent Document Processing "
+        "Documind - Intelligent Document Processing "
         "and Understanding System"
     )
 )
