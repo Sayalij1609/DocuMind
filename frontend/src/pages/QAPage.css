@@ -6,7 +6,7 @@
 .qa-card {
   padding: var(--space-8);
   text-align: center;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(17, 24, 39, 0.9));
+  background: linear-gradient(135deg, rgba(30, 30, 38, 0.75), rgba(12, 12, 16, 0.92));
   border: 1px solid var(--surface-glass-border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
@@ -46,9 +46,9 @@
   align-items: center;
   gap: var(--space-2);
   padding: 4px 12px;
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  color: var(--accent-secondary);
+  background: rgba(63, 126, 136, 0.16);
+  border: 1px solid rgba(63, 126, 136, 0.32);
+  color: var(--accent-secondary-hover);
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: 600;
@@ -78,8 +78,8 @@
 }
 
 .mock-chat-bubble-bot {
-  background: rgba(6, 182, 212, 0.1);
-  border: 1px solid rgba(6, 182, 212, 0.2);
+  background: rgba(201, 151, 63, 0.1);
+  border: 1px solid rgba(201, 151, 63, 0.2);
   border-radius: var(--radius-md) var(--radius-md) var(--radius-md) 0;
   padding: var(--space-3) var(--space-4);
   max-width: 85%;

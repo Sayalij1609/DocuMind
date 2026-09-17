@@ -1,5 +1,5 @@
 /* ==========================================
-   API Service Layer — Nexora Frontend
+   API Service Layer — Documind Frontend
    All backend calls go through this file.
    ========================================== */
 

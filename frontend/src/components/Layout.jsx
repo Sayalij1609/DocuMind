@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
+  Home,
   LayoutDashboard,
   Upload,
   FileText,
@@ -10,18 +11,34 @@ import {
   MessageCircleQuestion,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  FileCheck2,
 } from 'lucide-react';
 import './Layout.css';
 
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/upload', icon: Upload, label: 'Upload' },
-  { to: '/documents', icon: FileText, label: 'Documents' },
-  { to: '/anomalies', icon: AlertTriangle, label: 'Anomalies' },
-  { to: '/duplicates', icon: Copy, label: 'Duplicates' },
-  { to: '/search', icon: Search, label: 'Search' },
-  { to: '/qa', icon: MessageCircleQuestion, label: 'Q&A' },
+const navGroups = [
+  {
+    label: 'Overview',
+    items: [
+      { to: '/', icon: Home, label: 'Home' },
+      { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    ],
+  },
+  {
+    label: 'Workspace',
+    items: [
+      { to: '/upload', icon: Upload, label: 'Upload' },
+      { to: '/documents', icon: FileText, label: 'Documents' },
+    ],
+  },
+  {
+    label: 'Intelligence',
+    items: [
+      { to: '/anomalies', icon: AlertTriangle, label: 'Anomalies' },
+      { to: '/duplicates', icon: Copy, label: 'Duplicates' },
+      { to: '/search', icon: Search, label: 'Search' },
+      { to: '/qa', icon: MessageCircleQuestion, label: 'Q&A' },
+    ],
+  },
 ];
 
 export default function Layout() {
@@ -32,8 +49,10 @@ export default function Layout() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="logo">
-            <Sparkles size={22} className="logo-icon" />
-            {!collapsed && <span className="logo-text">Nexora</span>}
+            <span className="logo-mark">
+              <FileCheck2 size={18} />
+            </span>
+            {!collapsed && <span className="logo-text">Documind</span>}
           </div>
           <button
             className="collapse-btn"
@@ -45,19 +64,24 @@ export default function Layout() {
         </div>
 
         <nav className="sidebar-nav">
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) =>
-                `nav-item ${isActive ? 'active' : ''}`
-              }
-              title={collapsed ? label : undefined}
-            >
-              <Icon size={20} />
-              {!collapsed && <span>{label}</span>}
-            </NavLink>
+          {navGroups.map((group) => (
+            <div className="nav-section" key={group.label}>
+              {!collapsed && <div className="nav-section-label">{group.label}</div>}
+              {group.items.map(({ to, icon: Icon, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === '/'}
+                  className={({ isActive }) =>
+                    `nav-item ${isActive ? 'active' : ''}`
+                  }
+                  title={collapsed ? label : undefined}
+                >
+                  <Icon size={19} />
+                  {!collapsed && <span>{label}</span>}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
 

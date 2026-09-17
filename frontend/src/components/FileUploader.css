@@ -16,7 +16,7 @@
 .drop-zone:hover,
 .drop-zone.drag-active {
   border-color: var(--accent-primary);
-  background: rgba(6, 182, 212, 0.05);
+  background: rgba(201, 151, 63, 0.06);
   box-shadow: 0 0 24px var(--accent-primary-glow);
 }
 
@@ -155,7 +155,7 @@
   padding: var(--space-4) var(--space-5);
   margin-top: var(--space-4);
   background: var(--color-success-bg);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(77, 154, 106, 0.2);
   border-radius: var(--radius-md);
   color: var(--color-success);
 }

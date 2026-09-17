@@ -28,7 +28,7 @@ export default function QAPage() {
 
         <h2 className="qa-title">Ask Anything About Your Documents</h2>
         <p className="qa-subtitle">
-          Nexora Q&A will allow you to query your entire corpus of invoices, receipts, and contracts in natural language with source grounding and exact citations.
+          Documind Q&A will allow you to query your entire corpus of invoices, receipts, and contracts in natural language with source grounding and exact citations.
         </p>
 
         <div className="mock-chat-box">
@@ -37,7 +37,7 @@ export default function QAPage() {
           </div>
           <div className="mock-chat-bubble-bot">
             <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '4px' }}>
-              Nexora AI Assistant
+              Documind AI Assistant
             </strong>
             Based on 3 invoices found for <strong>Acme Corp</strong>, the total amount is <strong>$14,250.00</strong>.
             <div style={{ marginTop: '8px', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>

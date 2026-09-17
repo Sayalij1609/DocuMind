@@ -27,7 +27,8 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-md);
-  background: rgba(6, 182, 212, 0.1);
+  background: rgba(201, 151, 63, 0.14);
+  background: color-mix(in srgb, var(--card-accent) 16%, transparent);
   color: var(--card-accent);
   display: flex;
   align-items: center;
