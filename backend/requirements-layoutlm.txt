@@ -1,0 +1,10 @@
+# LayoutLMv3 dependencies (optional)
+#
+# Install separately:
+#   pip install -r requirements-layoutlm.txt
+#
+# For GPU support, install PyTorch with CUDA first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+#
+torch
+transformers
