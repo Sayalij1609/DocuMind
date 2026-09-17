@@ -19,6 +19,18 @@ class Settings(BaseSettings):
 
     classification_confidence_threshold: float = 0.5
 
+    # LayoutLMv3 (Phase 6)
+    layoutlm_enabled: bool = False
+    layoutlm_model_dir: str = ""
+    layoutlm_device: str = "auto"
+
+    # Anomaly Detection (Phase 9)
+    anomaly_model_path: str = (
+        "artifacts/anomaly/isolation_forest.joblib"
+    )
+    anomaly_contamination: float = 0.05
+    anomaly_min_training_samples: int = 10
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
