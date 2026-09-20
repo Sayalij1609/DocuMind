@@ -16,7 +16,7 @@
 .drop-zone:hover,
 .drop-zone.drag-active {
   border-color: var(--accent-primary);
-  background: rgba(201, 151, 63, 0.06);
+  background: rgba(222, 99, 138, 0.05);
   box-shadow: 0 0 24px var(--accent-primary-glow);
 }
 
