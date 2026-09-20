@@ -1,6 +1,7 @@
 /* ==========================================
    HomePage — Documind Landing & Overview
-   Mint-Rose-Mauve Theme · Palette: #EDF7F6 #F9A8B8 #A28089
+   Blue Eclipse & White Gradient Theme
+   Palette: #0F0E47 #272757 #505081 #8686AC
    ========================================== */
 
 .homepage {
@@ -30,7 +31,7 @@
 .shape-1 {
   width: 480px;
   height: 480px;
-  background: radial-gradient(circle, rgba(249, 168, 184, 0.45) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(134, 134, 172, 0.22) 0%, transparent 70%);
   top: -120px;
   right: -100px;
   animation: float 8s ease-in-out infinite;
@@ -39,7 +40,7 @@
 .shape-2 {
   width: 360px;
   height: 360px;
-  background: radial-gradient(circle, rgba(162, 128, 137, 0.35) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(80, 80, 129, 0.16) 0%, transparent 70%);
   bottom: 200px;
   left: -80px;
   animation: float 10s ease-in-out infinite reverse;
@@ -48,7 +49,7 @@
 .shape-3 {
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, rgba(237, 247, 246, 0.8) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(214, 214, 238, 0.35) 0%, transparent 70%);
   top: 40%;
   right: 10%;
   animation: float 12s ease-in-out infinite;
@@ -67,22 +68,22 @@
   align-items: center;
   gap: var(--space-2);
   padding: 6px 18px;
-  background: var(--bg-tertiary);
-  border: 1px solid rgba(162, 128, 137, 0.2);
+  background: linear-gradient(135deg, #ffffff 0%, #f4f4fa 100%);
+  border: 1px solid rgba(80, 80, 129, 0.18);
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: 600;
-  color: #a2586f;
+  color: #272757;
   margin-bottom: var(--space-6);
-  box-shadow: 0 2px 16px rgba(162, 128, 137, 0.08);
+  box-shadow: 0 2px 16px rgba(80, 80, 129, 0.08);
 }
 
 .pulse-dot {
   width: 8px;
   height: 8px;
   border-radius: var(--radius-full);
-  background: var(--accent-primary);
-  box-shadow: 0 0 8px var(--accent-primary);
+  background: #505081;
+  box-shadow: 0 0 8px #505081;
   animation: pulseGlow 2s infinite ease-in-out;
 }
 
@@ -101,7 +102,7 @@
 }
 
 .text-gradient {
-  background: linear-gradient(130deg, #d86985 0%, #ba5572 40%, #A28089 100%);
+  background: linear-gradient(130deg, #0F0E47 0%, #272757 35%, #505081 70%, #8686AC 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -133,19 +134,20 @@
   font-size: var(--font-size-base);
   font-weight: 600;
   font-family: var(--font-family);
-  background: linear-gradient(135deg, #F9A8B8, #b65a73);
+  background: linear-gradient(135deg, #272757 0%, #505081 100%);
   color: #ffffff;
   border-radius: var(--radius-md);
   text-decoration: none;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(249, 168, 184, 0.35);
+  box-shadow: 0 4px 20px rgba(39, 39, 87, 0.3);
   transition: all var(--transition-base);
 }
 
 .btn-hero-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 28px rgba(249, 168, 184, 0.5);
+  background: linear-gradient(135deg, #0F0E47 0%, #3e3e68 100%);
+  box-shadow: 0 6px 28px rgba(39, 39, 87, 0.45);
 }
 
 .btn-hero-secondary {
@@ -156,26 +158,27 @@
   font-size: var(--font-size-base);
   font-weight: 600;
   font-family: var(--font-family);
-  background: var(--accent-secondary);
-  color: #ffffff;
-  border: none;
+  background: linear-gradient(135deg, #ffffff 0%, #f6f6fc 100%);
+  color: #272757;
+  border: 1px solid rgba(80, 80, 129, 0.22);
   border-radius: var(--radius-md);
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(162, 128, 137, 0.22);
+  box-shadow: 0 4px 20px rgba(80, 80, 129, 0.1);
   transition: all var(--transition-base);
 }
 
 .btn-hero-secondary:hover {
-  background: var(--accent-secondary-hover);
+  background: #ffffff;
+  border-color: rgba(80, 80, 129, 0.35);
   transform: translateY(-2px);
-  box-shadow: 0 6px 28px rgba(162, 128, 137, 0.35);
+  box-shadow: 0 6px 28px rgba(80, 80, 129, 0.18);
 }
 
 /* --- Pipeline Visualizer Card --- */
 .pipeline-visualizer {
-  background: #ffffff;
-  border: 1px solid rgba(162, 128, 137, 0.14);
+  background: linear-gradient(145deg, #ffffff 0%, #fcfcff 100%);
+  border: 1px solid rgba(80, 80, 129, 0.14);
   border-radius: var(--radius-xl);
   padding: var(--space-6);
   box-shadow: var(--shadow-lg);
@@ -188,7 +191,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(162, 128, 137, 0.1);
+  border-bottom: 1px solid rgba(80, 80, 129, 0.1);
   padding-bottom: var(--space-4);
   margin-bottom: var(--space-5);
   flex-wrap: wrap;
@@ -239,8 +242,8 @@
 }
 
 .pill-tech {
-  background: rgba(162, 128, 137, 0.08);
-  color: var(--text-tertiary);
+  background: rgba(80, 80, 129, 0.08);
+  color: var(--text-secondary);
 }
 
 /* Pipeline steps */
@@ -252,8 +255,8 @@
 }
 
 .flow-step {
-  background: var(--bg-tertiary);
-  border: 1px solid rgba(162, 128, 137, 0.1);
+  background: #ffffff;
+  border: 1px solid rgba(80, 80, 129, 0.12);
   border-radius: var(--radius-md);
   padding: var(--space-3);
   text-align: center;
@@ -263,7 +266,7 @@
 
 .flow-step:hover {
   border-color: var(--accent-primary);
-  background: rgba(249, 168, 184, 0.08);
+  background: rgba(134, 134, 172, 0.08);
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
 }
@@ -294,8 +297,8 @@
 
 /* Sample Preview */
 .sample-parsed-card {
-  background: var(--bg-tertiary);
-  border: 1px solid rgba(162, 128, 137, 0.1);
+  background: #ffffff;
+  border: 1px solid rgba(80, 80, 129, 0.12);
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
 }
@@ -333,8 +336,8 @@
 }
 
 .sample-field-item {
-  background: #ffffff;
-  border: 1px solid rgba(162, 128, 137, 0.08);
+  background: #f8f8fd;
+  border: 1px solid rgba(80, 80, 129, 0.08);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
 }
@@ -400,8 +403,8 @@
 }
 
 .capability-card {
-  background: #ffffff;
-  border: 1px solid rgba(162, 128, 137, 0.12);
+  background: linear-gradient(145deg, #ffffff 0%, #fcfcff 100%);
+  border: 1px solid rgba(80, 80, 129, 0.12);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   transition: all var(--transition-base);
@@ -413,8 +416,8 @@
 
 .capability-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(249, 168, 184, 0.45);
-  box-shadow: 0 12px 40px rgba(162, 128, 137, 0.15);
+  border-color: rgba(80, 80, 129, 0.35);
+  box-shadow: 0 12px 40px rgba(39, 39, 87, 0.12);
 }
 
 .capability-icon-wrap {
@@ -426,8 +429,8 @@
   justify-content: center;
   margin-bottom: var(--space-4);
   flex-shrink: 0;
-  background: linear-gradient(145deg, rgba(249, 168, 184, 0.22), rgba(162, 128, 137, 0.12));
-  color: #b65a73;
+  background: linear-gradient(145deg, rgba(134, 134, 172, 0.22), rgba(80, 80, 129, 0.12));
+  color: #272757;
 }
 
 .capability-title {
@@ -465,8 +468,8 @@
 }
 
 .stat-box {
-  background: #ffffff;
-  border: 1px solid rgba(162, 128, 137, 0.1);
+  background: linear-gradient(145deg, #ffffff 0%, #fbfbfe 100%);
+  border: 1px solid rgba(80, 80, 129, 0.12);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   text-align: center;
@@ -477,13 +480,14 @@
 .stat-box:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
+  border-color: rgba(80, 80, 129, 0.25);
 }
 
 .stat-value {
   font-family: var(--font-display);
   font-size: var(--font-size-3xl);
   font-weight: 800;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  background: linear-gradient(135deg, #272757 0%, #505081 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -499,14 +503,14 @@
 
 /* --- CTA Banner --- */
 .cta-banner {
-  background: linear-gradient(135deg, #2d1c23 0%, #462834 40%, #6b3b4d 75%, #925167 100%);
+  background: linear-gradient(135deg, #0F0E47 0%, #1a1a47 35%, #272757 70%, #3e3e6b 100%);
   border: none;
   border-radius: var(--radius-xl);
   padding: var(--space-10) var(--space-6);
   text-align: center;
   position: relative;
   z-index: 1;
-  box-shadow: 0 8px 40px rgba(45, 28, 35, 0.3);
+  box-shadow: 0 8px 40px rgba(15, 14, 71, 0.35);
 }
 
 .cta-title {

@@ -1,7 +1,7 @@
 /* ==========================================
    HomeLayout — Navbar-only shell for HomePage
-   Mint-Rose-Mauve gradient navbar with bold white text
-   Palette: #EDF7F6 #F9A8B8 #A28089
+   Blue Eclipse gradient navbar with bold white text
+   Palette: #0F0E47 #272757 #505081 #8686AC
    ========================================== */
 
 .home-layout {
@@ -17,9 +17,9 @@
   left: 0;
   right: 0;
   z-index: 200;
-  background: linear-gradient(90deg, #2d1c23 0%, #442733 22%, #613647 48%, #85495e 72%, #aa5d75 88%, #F9A8B8 100%);
+  background: linear-gradient(90deg, #0F0E47 0%, #1e1e4f 25%, #272757 50%, #3d3d6e 75%, #505081 90%, #636395 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 4px 24px rgba(45, 28, 35, 0.28);
+  box-shadow: 0 4px 24px rgba(15, 14, 71, 0.3);
 }
 
 .home-navbar-inner {
@@ -50,12 +50,12 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(145deg, #F9A8B8, #9c556b);
+  background: linear-gradient(145deg, #8686AC 0%, #272757 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 14px rgba(249, 168, 184, 0.45);
+  box-shadow: 0 2px 14px rgba(80, 80, 129, 0.4);
   transition: transform var(--transition-fast);
 }
 
@@ -98,8 +98,8 @@
 }
 
 .home-navbar-link.active {
-  background: rgba(249, 168, 184, 0.3);
-  border: 1px solid rgba(249, 168, 184, 0.42);
+  background: rgba(134, 134, 172, 0.32);
+  border: 1px solid rgba(134, 134, 172, 0.45);
   color: #ffffff;
   font-weight: 700;
 }
@@ -150,7 +150,7 @@
 }
 
 .home-navbar-mobile-link.active {
-  background: rgba(249, 168, 184, 0.3);
+  background: rgba(134, 134, 172, 0.32);
   color: #ffffff;
   font-weight: 700;
 }
@@ -167,15 +167,15 @@
 }
 
 /* ==========================================
-   Home Footer — Deep Mauve Gradient & Glass
+   Home Footer — Deep Blue Eclipse Gradient & Glass
    ========================================== */
 .home-footer {
-  background: linear-gradient(135deg, #22141a 0%, #351e28 35%, #4c2c39 70%, #683d4e 100%);
+  background: linear-gradient(135deg, #0a0930 0%, #0F0E47 35%, #1c1b4e 70%, #272757 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 -6px 36px rgba(45, 28, 35, 0.28);
+  box-shadow: 0 -6px 36px rgba(15, 14, 71, 0.35);
 }
 
 .home-footer::before {
@@ -185,7 +185,7 @@
   left: 10%;
   width: 500px;
   height: 200px;
-  background: radial-gradient(circle, rgba(249, 168, 184, 0.18), transparent 70%);
+  background: radial-gradient(circle, rgba(134, 134, 172, 0.2), transparent 70%);
   pointer-events: none;
 }
 
@@ -221,12 +221,12 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(145deg, #F9A8B8, #9c556b);
+  background: linear-gradient(145deg, #8686AC 0%, #272757 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 14px rgba(249, 168, 184, 0.45);
+  box-shadow: 0 2px 14px rgba(80, 80, 129, 0.4);
 }
 
 .footer-logo-text {
@@ -317,8 +317,8 @@
 .tech-tag {
   display: inline-block;
   padding: 2px 7px;
-  background: rgba(249, 168, 184, 0.22);
-  border: 1px solid rgba(249, 168, 184, 0.4);
+  background: rgba(134, 134, 172, 0.25);
+  border: 1px solid rgba(134, 134, 172, 0.4);
   border-radius: 4px;
   color: #ffffff;
   font-weight: 700;
@@ -347,20 +347,20 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, #F9A8B8, #9c556b);
+  background: linear-gradient(135deg, #505081 0%, #272757 100%);
   color: #ffffff;
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 2px 12px rgba(249, 168, 184, 0.35);
+  box-shadow: 0 2px 12px rgba(39, 39, 87, 0.35);
   transition: all var(--transition-fast);
 }
 
 .footer-cta-btn:hover {
   color: #ffffff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 18px rgba(249, 168, 184, 0.5);
+  box-shadow: 0 4px 18px rgba(39, 39, 87, 0.5);
 }
 
 /* --- Responsive --- */

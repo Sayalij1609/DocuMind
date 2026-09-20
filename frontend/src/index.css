@@ -1,56 +1,60 @@
 /* ==========================================
-   DOCUMIND DESIGN SYSTEM — Mint Rose Mauve
-   Light theme · Palette: #EDF7F6 #F9A8B8 #A28089
+   DOCUMIND DESIGN SYSTEM — Blue Eclipse
+   Light White theme with subtle light purple / lavender ambient effect
+   Palette: #0F0E47 #272757 #505081 #8686AC
    ========================================== */
 
 :root {
-  /* Background palette — mint-tinted whites with rose warmth */
-  --bg-primary: #f5faf9;
+  /* Background palette — clean white with subtle light purple/lavender tints */
+  --bg-primary: #ffffff;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f0f7f6;
+  --bg-tertiary: #f6f6fc;
   --bg-elevated: #ffffff;
-  --bg-hover: #e8f3f1;
-  --bg-active: #ddeeed;
+  --bg-hover: #f0f0f8;
+  --bg-active: #e6e6f4;
 
-  /* Surface / glass — frosted panels with teal tint */
-  --surface-glass: rgba(237, 247, 246, 0.72);
-  --surface-glass-border: rgba(162, 128, 137, 0.14);
-  --surface-glass-hover: rgba(237, 247, 246, 0.88);
+  /* Surface / glass — frosted white with soft purple tint */
+  --surface-glass: rgba(255, 255, 255, 0.85);
+  --surface-glass-border: rgba(80, 80, 129, 0.12);
+  --surface-glass-hover: rgba(255, 255, 255, 0.98);
 
-  /* Text — mauve-derived darks and mids */
-  --text-primary: #3d2e33;
-  --text-secondary: #6b555d;
-  --text-tertiary: #917a83;
-  --text-muted: #b8a3ab;
+  /* Text — deep indigo/navy darks and muted slate */
+  --text-primary: #12112e;
+  --text-secondary: #4a4a6b;
+  --text-tertiary: #787899;
+  --text-muted: #a4a4c2;
 
-  /* Brand / accent */
-  --accent-primary: #F9A8B8;
-  --accent-primary-hover: #f48da2;
-  --accent-primary-glow: rgba(249, 168, 184, 0.30);
-  --accent-primary-tint: rgba(249, 168, 184, 0.12);
-  --accent-secondary: #A28089;
-  --accent-secondary-hover: #8e6d76;
-  --accent-secondary-glow: rgba(162, 128, 137, 0.22);
-  --accent-secondary-tint: rgba(162, 128, 137, 0.10);
+  /* Brand / accent — Blue Eclipse Palette */
+  --accent-primary: #505081;
+  --accent-primary-hover: #3b3b64;
+  --accent-primary-glow: rgba(80, 80, 129, 0.28);
+  --accent-primary-tint: rgba(80, 80, 129, 0.08);
+  --accent-secondary: #8686AC;
+  --accent-secondary-hover: #727299;
+  --accent-secondary-glow: rgba(134, 134, 172, 0.22);
+  --accent-secondary-tint: rgba(134, 134, 172, 0.10);
 
-  /* Tertiary tones from palette */
-  --pink-soft: #F9A8B8;
-  --pink-mimi: #fcd4dc;
-  --lavender: #c5d8d5;
+  /* Blue Eclipse Palette Swatches */
+  --eclipse-darkest: #0F0E47;
+  --eclipse-deep: #272757;
+  --eclipse-mid: #505081;
+  --eclipse-light: #8686AC;
+  --eclipse-lavender: #d6d6e8;
+  --eclipse-pale: #f4f4fa;
 
   /* Status colors — tuned for light background legibility */
-  --color-success: #2e8b57;
-  --color-success-bg: rgba(46, 139, 87, 0.10);
-  --color-warning: #d4820a;
-  --color-warning-bg: rgba(212, 130, 10, 0.10);
-  --color-error: #d64545;
-  --color-error-bg: rgba(214, 69, 69, 0.10);
-  --color-info: #3b6ed4;
-  --color-info-bg: rgba(59, 110, 212, 0.10);
-  --color-anomaly: #c85a00;
-  --color-anomaly-bg: rgba(200, 90, 0, 0.10);
-  --color-duplicate: #8b5a8f;
-  --color-duplicate-bg: rgba(139, 90, 143, 0.10);
+  --color-success: #1b8755;
+  --color-success-bg: rgba(27, 135, 85, 0.10);
+  --color-warning: #c27807;
+  --color-warning-bg: rgba(194, 120, 7, 0.10);
+  --color-error: #d63838;
+  --color-error-bg: rgba(214, 56, 56, 0.10);
+  --color-info: #355ec2;
+  --color-info-bg: rgba(53, 94, 194, 0.10);
+  --color-anomaly: #c05200;
+  --color-anomaly-bg: rgba(192, 82, 0, 0.10);
+  --color-duplicate: #7b4f91;
+  --color-duplicate-bg: rgba(123, 79, 145, 0.10);
 
   /* Typography */
   --font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -83,10 +87,10 @@
   --radius-xl: 24px;
   --radius-full: 9999px;
 
-  /* Shadows — teal-rose tinted for the new palette */
-  --shadow-sm: 0 2px 6px rgba(162, 128, 137, 0.08);
-  --shadow-md: 0 6px 22px rgba(162, 128, 137, 0.11);
-  --shadow-lg: 0 12px 48px rgba(162, 128, 137, 0.15);
+  /* Shadows — soft slate-lavender tinted */
+  --shadow-sm: 0 2px 8px rgba(39, 39, 87, 0.06);
+  --shadow-md: 0 6px 24px rgba(39, 39, 87, 0.09);
+  --shadow-lg: 0 12px 48px rgba(39, 39, 87, 0.13);
   --shadow-glow: 0 0 24px var(--accent-primary-glow);
 
   /* Transitions */
@@ -117,11 +121,11 @@ html {
 body {
   font-family: var(--font-family);
   background:
-    radial-gradient(ellipse 900px 500px at 0% -5%, rgba(237, 247, 246, 0.55), transparent 60%),
-    radial-gradient(ellipse 800px 600px at 100% 0%, rgba(249, 168, 184, 0.18), transparent 55%),
-    radial-gradient(ellipse 700px 500px at 50% 100%, rgba(162, 128, 137, 0.10), transparent 60%),
-    radial-gradient(ellipse 400px 300px at 80% 50%, rgba(237, 247, 246, 0.25), transparent 50%),
-    linear-gradient(155deg, #EDF7F6 0%, #f2f8f7 15%, #f6f4f3 30%, #fdf5f6 50%, #faf0f1 65%, #f8eced 80%, #EDF7F6 100%);
+    radial-gradient(ellipse 1000px 600px at 5% -5%, rgba(134, 134, 172, 0.14), transparent 55%),
+    radial-gradient(ellipse 900px 700px at 95% 10%, rgba(80, 80, 129, 0.09), transparent 55%),
+    radial-gradient(ellipse 800px 600px at 50% 100%, rgba(134, 134, 172, 0.12), transparent 60%),
+    radial-gradient(ellipse 500px 400px at 85% 65%, rgba(214, 214, 238, 0.25), transparent 50%),
+    linear-gradient(165deg, #ffffff 0%, #fafafd 25%, #f4f4fa 50%, #f9f9fe 75%, #ffffff 100%);
   background-attachment: fixed;
   color: var(--text-primary);
   line-height: 1.6;
@@ -191,7 +195,7 @@ input:focus, textarea:focus, select:focus {
 
 /* --- Card --- */
 .card {
-  background: #ffffff;
+  background: linear-gradient(145deg, #ffffff 0%, #fbfbfe 100%);
   border: 1px solid var(--surface-glass-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
@@ -201,6 +205,7 @@ input:focus, textarea:focus, select:focus {
 
 .card:hover {
   box-shadow: var(--shadow-md);
+  border-color: rgba(80, 80, 129, 0.22);
 }
 
 /* --- Page Header --- */
@@ -241,14 +246,14 @@ input:focus, textarea:focus, select:focus {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-primary), #d14e73);
+  background: linear-gradient(135deg, #272757 0%, #505081 100%);
   color: #ffffff;
-  box-shadow: 0 2px 12px var(--accent-primary-glow);
+  box-shadow: 0 3px 14px rgba(39, 39, 87, 0.28);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--accent-primary-hover), var(--accent-primary));
-  box-shadow: 0 4px 20px var(--accent-primary-glow);
+  background: linear-gradient(135deg, #0F0E47 0%, #3e3e68 100%);
+  box-shadow: 0 6px 22px rgba(39, 39, 87, 0.38);
   transform: translateY(-1px);
 }
 
@@ -271,7 +276,7 @@ input:focus, textarea:focus, select:focus {
 .btn-secondary:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
-  border-color: rgba(162, 128, 137, 0.24);
+  border-color: rgba(80, 80, 129, 0.24);
 }
 
 .btn-ghost {
