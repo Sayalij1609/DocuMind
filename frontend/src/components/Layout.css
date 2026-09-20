@@ -1,7 +1,7 @@
 /* ==========================================
    Layout — Sidebar + Main Content Shell
-   Blue Eclipse gradient sidebar with bold white text
-   Palette: #0F0E47 #272757 #505081 #8686AC
+   Tech Navy & Cobalt Blue gradient sidebar with bold white text
+   Palette: Deep Navy #09122C | Slate #1E293B | Cobalt #2563EB | Sky #0EA5E9
    ========================================== */
 
 .app-layout {
@@ -12,7 +12,7 @@
 /* --- Sidebar --- */
 .sidebar {
   width: var(--sidebar-width);
-  background: linear-gradient(180deg, #0F0E47 0%, #1a1a47 25%, #272757 50%, #383868 75%, #505081 90%, #686895 100%);
+  background: linear-gradient(180deg, #09122C 0%, #0F172A 30%, #1E293B 65%, #1E3A8A 100%);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -22,7 +22,7 @@
   z-index: 100;
   transition: width var(--transition-base);
   overflow: hidden;
-  box-shadow: 4px 0 28px rgba(15, 14, 71, 0.35);
+  box-shadow: 4px 0 28px rgba(9, 18, 44, 0.4);
 }
 
 .sidebar-collapsed .sidebar {
@@ -50,13 +50,13 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(145deg, #8686AC 0%, #272757 100%);
+  background: linear-gradient(145deg, #0EA5E9 0%, #1E3A8A 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 14px rgba(80, 80, 129, 0.4);
+  box-shadow: 0 2px 14px rgba(37, 99, 235, 0.4);
   transition: transform var(--transition-fast);
 }
 
@@ -144,11 +144,11 @@
 }
 
 .nav-item.active {
-  background: rgba(134, 134, 172, 0.32);
-  border: 1px solid rgba(134, 134, 172, 0.45);
+  background: rgba(37, 99, 235, 0.32);
+  border: 1px solid rgba(56, 189, 248, 0.45);
   color: #ffffff;
   font-weight: 800; /* Extra bold when active */
-  box-shadow: 0 2px 14px rgba(134, 134, 172, 0.3);
+  box-shadow: 0 2px 14px rgba(37, 99, 235, 0.3);
 }
 
 .nav-item.active::before {
@@ -210,19 +210,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(80, 80, 129, 0.14);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: var(--radius-lg);
   padding: 10px var(--space-5);
   margin-bottom: var(--space-6);
-  box-shadow: 0 4px 18px rgba(80, 80, 129, 0.06);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
   transition: all var(--transition-fast);
 }
 
 .app-topbar:hover {
-  box-shadow: 0 6px 24px rgba(80, 80, 129, 0.1);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.07);
 }
 
 .topbar-left {
@@ -238,8 +238,8 @@
   gap: 7px;
   padding: 8px 14px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #ffffff 0%, rgba(134, 134, 172, 0.16) 100%);
-  border: 1px solid rgba(80, 80, 129, 0.18);
+  background: linear-gradient(135deg, #ffffff 0%, rgba(37, 99, 235, 0.06) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.18);
   color: var(--text-primary);
   font-family: var(--font-display);
   font-size: var(--font-size-sm);
@@ -250,10 +250,10 @@
 }
 
 .back-to-home-btn:hover {
-  background: linear-gradient(135deg, #272757 0%, #505081 100%);
+  background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);
   color: #ffffff;
   border-color: transparent;
-  box-shadow: 0 4px 14px rgba(39, 39, 87, 0.32);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
   transform: translateX(-2px);
 }
 

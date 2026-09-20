@@ -43,6 +43,29 @@ import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
 import './DocumentDetailPage.css';
 
+const formatRupees = (val) => {
+  if (val == null || val === '') return '—';
+  if (typeof val === 'number') return `₹${val.toLocaleString('en-IN')}`;
+  const str = String(val).trim();
+  if (str.startsWith('₹')) return str;
+  const num = parseFloat(str.replace(/[^0-9.-]+/g, ''));
+  if (!isNaN(num)) return `₹${num.toLocaleString('en-IN')}`;
+  return str.replace(/\$/g, '₹');
+};
+
+const formatFieldValue = (name, val) => {
+  if (val === null || val === undefined) return 'null';
+  const str = String(val);
+  const isMoney = /amount|total|subtotal|tax|price|fee|balance/i.test(name);
+  if (isMoney && !str.includes('₹') && !str.includes('INR')) {
+    const num = parseFloat(str.replace(/[^0-9.-]+/g, ''));
+    if (!isNaN(num)) {
+      return `₹${num.toLocaleString('en-IN')}`;
+    }
+  }
+  return str.replace(/\$/g, '₹');
+};
+
 export default function DocumentDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -639,9 +662,7 @@ export default function DocumentDetailPage() {
                     <td className="field-key">{name.replace(/_/g, ' ')}</td>
                     <td>
                       <span className="field-val-box">
-                        {field?.value !== null && field?.value !== undefined
-                          ? String(field.value)
-                          : 'null'}
+                        {formatFieldValue(name, field?.value)}
                       </span>
                     </td>
                     <td>
@@ -686,8 +707,8 @@ export default function DocumentDetailPage() {
                   <th>#</th>
                   <th>Description</th>
                   <th style={{ textAlign: 'right' }}>Qty</th>
-                  <th style={{ textAlign: 'right' }}>Unit Price</th>
-                  <th style={{ textAlign: 'right' }}>Amount</th>
+                  <th style={{ textAlign: 'right' }}>Unit Price (₹)</th>
+                  <th style={{ textAlign: 'right' }}>Amount (₹)</th>
                 </tr>
               </thead>
               <tbody>
@@ -699,10 +720,10 @@ export default function DocumentDetailPage() {
                       {item.quantity ?? '—'}
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                      {item.unit_price != null ? Number(item.unit_price).toLocaleString() : '—'}
+                      {item.unit_price != null ? formatRupees(item.unit_price) : '—'}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'monospace' }}>
-                      {item.amount != null ? Number(item.amount).toLocaleString() : '—'}
+                      {item.amount != null ? formatRupees(item.amount) : '—'}
                     </td>
                   </tr>
                 ))}
@@ -724,24 +745,24 @@ export default function DocumentDetailPage() {
             <div className="finance-grid">
               <div className="finance-row">
                 <span>Subtotal</span>
-                <span className="mono">{aiFinValidation.subtotal ?? '—'}</span>
+                <span className="mono">{formatRupees(aiFinValidation.subtotal)}</span>
               </div>
               <div className="finance-row">
                 <span>+ Tax</span>
-                <span className="mono">{aiFinValidation.tax ?? '—'}</span>
+                <span className="mono">{formatRupees(aiFinValidation.tax)}</span>
               </div>
               <div className="finance-row">
                 <span>− Discount</span>
-                <span className="mono">{aiFinValidation.discount ?? '—'}</span>
+                <span className="mono">{formatRupees(aiFinValidation.discount)}</span>
               </div>
               <div className="finance-divider" />
               <div className="finance-row total-row">
                 <span>Computed Total</span>
-                <span className="mono">{aiFinValidation.computed_total ?? '—'}</span>
+                <span className="mono">{formatRupees(aiFinValidation.computed_total)}</span>
               </div>
               <div className="finance-row total-row">
                 <span>Stated Total</span>
-                <span className="mono">{aiFinValidation.stated_total ?? '—'}</span>
+                <span className="mono">{formatRupees(aiFinValidation.stated_total)}</span>
               </div>
               <div className="finance-divider" />
               <div className="finance-row verdict-row">
@@ -752,7 +773,7 @@ export default function DocumentDetailPage() {
                   )}
                   {aiFinValidation.is_valid === false && (
                     <span className="verdict-fail">
-                      <AlertCircle size={16} /> Discrepancy: {aiFinValidation.discrepancy}
+                      <AlertCircle size={16} /> Discrepancy: {formatRupees(aiFinValidation.discrepancy)}
                     </span>
                   )}
                   {aiFinValidation.is_valid == null && (

@@ -200,13 +200,13 @@ export default function HomePage() {
 
             {/* Floating Live Card 2: Bottom-Left Reconciled Extraction */}
             <div className="floating-card floating-card-bottom animate-float-delayed">
-              <div className="floating-card-icon purple">
+              <div className="floating-card-icon blue">
                 <Zap size={16} />
               </div>
               <div className="floating-card-body">
                 <div className="floating-card-title">LIVE EXTRACTION AUDIT</div>
                 <div className="floating-card-sub">
-                  Total: <strong>$14,250.00</strong> · Subtotal + Tax <span className="tag-pass">PASS ✓</span>
+                  Total: <strong>₹14,250.00</strong> · Subtotal + Tax <span className="tag-pass">PASS ✓</span>
                 </div>
               </div>
             </div>
@@ -299,7 +299,7 @@ export default function HomePage() {
               </div>
               <div className="sample-field-item">
                 <div className="sample-field-key">Total Amount</div>
-                <div className="sample-field-val">$14,250.00</div>
+                <div className="sample-field-val">₹14,250.00</div>
               </div>
               <div className="sample-field-item">
                 <div className="sample-field-key">Validation Audit</div>

@@ -1,7 +1,7 @@
 /* ==========================================
    HomeLayout — Navbar-only shell for HomePage
-   Blue Eclipse gradient navbar with bold white text
-   Palette: #0F0E47 #272757 #505081 #8686AC
+   Tech Navy & Cobalt Blue gradient navbar with bold white text
+   Palette: Deep Navy #09122C | Slate #1E293B | Cobalt #2563EB | Sky #0EA5E9
    ========================================== */
 
 .home-layout {
@@ -17,9 +17,9 @@
   left: 0;
   right: 0;
   z-index: 200;
-  background: linear-gradient(90deg, #0F0E47 0%, #1e1e4f 25%, #272757 50%, #3d3d6e 75%, #505081 90%, #636395 100%);
+  background: linear-gradient(90deg, #09122C 0%, #0F172A 30%, #1E293B 65%, #1E3A8A 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 4px 24px rgba(15, 14, 71, 0.3);
+  box-shadow: 0 4px 24px rgba(9, 18, 44, 0.35);
 }
 
 .home-navbar-inner {
@@ -50,12 +50,12 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(145deg, #8686AC 0%, #272757 100%);
+  background: linear-gradient(145deg, #0EA5E9 0%, #1E3A8A 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 14px rgba(80, 80, 129, 0.4);
+  box-shadow: 0 2px 14px rgba(37, 99, 235, 0.4);
   transition: transform var(--transition-fast);
 }
 
@@ -85,7 +85,7 @@
   padding: var(--space-2) var(--space-3);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.85);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
   text-decoration: none;
@@ -98,8 +98,8 @@
 }
 
 .home-navbar-link.active {
-  background: rgba(134, 134, 172, 0.32);
-  border: 1px solid rgba(134, 134, 172, 0.45);
+  background: rgba(37, 99, 235, 0.3);
+  border: 1px solid rgba(56, 189, 248, 0.45);
   color: #ffffff;
   font-weight: 700;
 }
@@ -150,7 +150,7 @@
 }
 
 .home-navbar-mobile-link.active {
-  background: rgba(134, 134, 172, 0.32);
+  background: rgba(37, 99, 235, 0.3);
   color: #ffffff;
   font-weight: 700;
 }
@@ -167,15 +167,15 @@
 }
 
 /* ==========================================
-   Home Footer — Deep Blue Eclipse Gradient & Glass
+   Home Footer — Deep Tech Navy Gradient & Glass
    ========================================== */
 .home-footer {
-  background: linear-gradient(135deg, #0a0930 0%, #0F0E47 35%, #1c1b4e 70%, #272757 100%);
+  background: linear-gradient(135deg, #070D1E 0%, #09122C 35%, #0F172A 70%, #1E293B 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 -6px 36px rgba(15, 14, 71, 0.35);
+  box-shadow: 0 -6px 36px rgba(9, 18, 44, 0.4);
 }
 
 .home-footer::before {
@@ -185,7 +185,7 @@
   left: 10%;
   width: 500px;
   height: 200px;
-  background: radial-gradient(circle, rgba(134, 134, 172, 0.2), transparent 70%);
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.12), transparent 70%);
   pointer-events: none;
 }
 
@@ -221,12 +221,12 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(145deg, #8686AC 0%, #272757 100%);
+  background: linear-gradient(145deg, #0EA5E9 0%, #1E3A8A 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 14px rgba(80, 80, 129, 0.4);
+  box-shadow: 0 2px 14px rgba(37, 99, 235, 0.4);
 }
 
 .footer-logo-text {
@@ -317,8 +317,8 @@
 .tech-tag {
   display: inline-block;
   padding: 2px 7px;
-  background: rgba(134, 134, 172, 0.25);
-  border: 1px solid rgba(134, 134, 172, 0.4);
+  background: rgba(37, 99, 235, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.35);
   border-radius: 4px;
   color: #ffffff;
   font-weight: 700;
@@ -347,13 +347,13 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, #505081 0%, #272757 100%);
+  background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
   color: #ffffff;
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 2px 12px rgba(39, 39, 87, 0.35);
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.35);
   transition: all var(--transition-fast);
 }
 
