@@ -16,20 +16,20 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Home uses navbar-only layout */}
-        <Route path="/" element={<HomeLayout />}>
-          <Route index element={<HomePage />} />
+        <Route element={<HomeLayout />}>
+          <Route path="/" element={<HomePage />} />
         </Route>
 
         {/* All other pages use sidebar layout */}
-        <Route path="/" element={<Layout />}>
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="upload" element={<UploadPage />} />
-          <Route path="documents" element={<DocumentsPage />} />
-          <Route path="documents/:id" element={<DocumentDetailPage />} />
-          <Route path="anomalies" element={<AnomaliesPage />} />
-          <Route path="duplicates" element={<DuplicatesPage />} />
-          <Route path="search" element={<SearchPage />} />
-          <Route path="qa" element={<QAPage />} />
+        <Route element={<Layout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="/documents/:id" element={<DocumentDetailPage />} />
+          <Route path="/anomalies" element={<AnomaliesPage />} />
+          <Route path="/duplicates" element={<DuplicatesPage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/qa" element={<QAPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -7,13 +7,15 @@ import {
   TrendingUp,
   ArrowLeft,
   Home,
+  AlertCircle,
+  RefreshCw,
+  Clock,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { getDocuments } from '../services/api';
 import MetricCard from '../components/MetricCard';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
-import ErrorMessage from '../components/ErrorMessage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import './DashboardPage.css';
 
@@ -21,8 +23,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { data, loading, error, refetch } = useApi(getDocuments);
 
-  if (loading) return <LoadingSpinner message="Loading dashboard..." />;
-  if (error) return <ErrorMessage message={error} onRetry={refetch} />;
+  if (loading && !data && !error) return <LoadingSpinner message="Loading dashboard..." />;
 
   const documents = data?.documents || [];
   const total = documents.length;
@@ -94,7 +95,24 @@ export default function DashboardPage() {
         <p>Overview of your document intelligence pipeline</p>
       </div>
 
-      {/* Metrics */}
+      {/* Offline notice if backend is unreachable */}
+      {error && (
+        <div className="backend-offline-banner card animate-fade-in">
+          <div className="offline-banner-left">
+            <AlertCircle size={20} className="offline-banner-icon" />
+            <div>
+              <p className="offline-banner-title">Backend Server Offline</p>
+              <p className="offline-banner-desc">
+                Could not connect to API server. Dashboard is displaying in offline mode. Start your backend with <code>uvicorn app.main:app --reload</code> on port 8000 to view live pipeline data.
+              </p>
+            </div>
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={refetch}>
+            <RefreshCw size={14} />
+            <span>Retry Connection</span>
+          </button>
+        </div>
+      )}
       <div className="grid-metrics">
         <MetricCard
           icon={FileText}
