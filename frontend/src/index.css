@@ -83,10 +83,10 @@
   --radius-xl: 24px;
   --radius-full: 9999px;
 
-  /* Shadows — soft, diffused for light theme */
-  --shadow-sm: 0 1px 3px rgba(74, 50, 103, 0.06);
-  --shadow-md: 0 4px 16px rgba(74, 50, 103, 0.08);
-  --shadow-lg: 0 8px 40px rgba(74, 50, 103, 0.12);
+  /* Shadows — crisp, high-definition diffused for light theme */
+  --shadow-sm: 0 2px 6px rgba(74, 50, 103, 0.07);
+  --shadow-md: 0 6px 22px rgba(74, 50, 103, 0.09);
+  --shadow-lg: 0 12px 48px rgba(74, 50, 103, 0.13);
   --shadow-glow: 0 0 24px var(--accent-primary-glow);
 
   /* Transitions */
@@ -96,7 +96,7 @@
 
   /* Layout */
   --navbar-height: 68px;
-  --sidebar-width: 260px;
+  --sidebar-width: 268px;
   --sidebar-collapsed: 72px;
 }
 
@@ -108,9 +108,10 @@
 }
 
 html {
-  font-size: 16px;
+  font-size: 16.5px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {

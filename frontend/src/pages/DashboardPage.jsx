@@ -1,13 +1,12 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   FileText,
   CheckCircle,
   XCircle,
-  Clock,
-  AlertTriangle,
-  Copy,
   BarChart3,
   TrendingUp,
+  ArrowLeft,
+  Home,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { getDocuments } from '../services/api';
@@ -84,6 +83,13 @@ export default function DashboardPage() {
   return (
     <div className="dashboard-page animate-fade-in">
       <div className="page-header">
+        <div className="page-header-top-nav">
+          <Link to="/" className="inline-back-home" title="Go to Home">
+            <ArrowLeft size={14} />
+            <Home size={14} />
+            <span>Back to Home</span>
+          </Link>
+        </div>
         <h1>Dashboard</h1>
         <p>Overview of your document intelligence pipeline</p>
       </div>

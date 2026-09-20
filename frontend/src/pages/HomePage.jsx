@@ -7,12 +7,9 @@ import {
   ShieldCheck,
   Copy,
   AlertTriangle,
-  FileText,
   Cpu,
   Sparkles,
-  CheckCircle2,
   Activity,
-  FileSearch,
 } from 'lucide-react';
 import './HomePage.css';
 

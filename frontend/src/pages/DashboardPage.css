@@ -1,5 +1,30 @@
 .dashboard-page {
-  max-width: 1280px;
+  max-width: 1360px;
+}
+
+.page-header-top-nav {
+  margin-bottom: var(--space-3);
+}
+
+.inline-back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-tertiary);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(74, 50, 103, 0.08);
+  transition: all var(--transition-fast);
+}
+
+.inline-back-home:hover {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: #ffffff;
+  transform: translateX(-2px);
 }
 
 .dashboard-grid {
