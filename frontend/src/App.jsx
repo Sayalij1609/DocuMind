@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import HomeLayout from './components/HomeLayout';
 import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
@@ -14,8 +15,13 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout />}>
+        {/* Home uses navbar-only layout */}
+        <Route path="/" element={<HomeLayout />}>
           <Route index element={<HomePage />} />
+        </Route>
+
+        {/* All other pages use sidebar layout */}
+        <Route path="/" element={<Layout />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="upload" element={<UploadPage />} />
           <Route path="documents" element={<DocumentsPage />} />
@@ -24,8 +30,9 @@ export default function App() {
           <Route path="duplicates" element={<DuplicatesPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="qa" element={<QAPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
