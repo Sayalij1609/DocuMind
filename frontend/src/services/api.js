@@ -3,7 +3,8 @@
    All backend calls go through this file.
    ========================================== */
 
-const API_BASE_URL = '/api/documents';
+const BASE_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/+$/, '') : '';
+const API_BASE_URL = `${BASE_URL}/api/documents`;
 
 /**
  * Fetch wrapper with consistent error handling.
@@ -25,7 +26,7 @@ async function request(url, options = {}) {
 /* --- Health --- */
 
 export async function checkHealth() {
-  return request('/health');
+  return request(`${BASE_URL}/health`);
 }
 
 /* --- Documents --- */
