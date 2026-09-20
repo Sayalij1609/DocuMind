@@ -1,42 +1,42 @@
 /* ==========================================
-   DOCUMIND DESIGN SYSTEM — Lavender Bloom
-   Light theme · Palette: #4A3267 #DE638A #F7B9C4 #F3D9E5 #C6BADE
+   DOCUMIND DESIGN SYSTEM — Mint Rose Mauve
+   Light theme · Palette: #EDF7F6 #F9A8B8 #A28089
    ========================================== */
 
 :root {
-  /* Background palette — clean white/light with soft lavender tints */
-  --bg-primary: #f8f6fc;
+  /* Background palette — mint-tinted whites with rose warmth */
+  --bg-primary: #f5faf9;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f3eef9;
+  --bg-tertiary: #f0f7f6;
   --bg-elevated: #ffffff;
-  --bg-hover: #ede7f6;
-  --bg-active: #e0d6f0;
+  --bg-hover: #e8f3f1;
+  --bg-active: #ddeeed;
 
-  /* Surface / glass — frosted white panels */
-  --surface-glass: rgba(255, 255, 255, 0.72);
-  --surface-glass-border: rgba(74, 50, 103, 0.10);
-  --surface-glass-hover: rgba(255, 255, 255, 0.88);
+  /* Surface / glass — frosted panels with teal tint */
+  --surface-glass: rgba(237, 247, 246, 0.72);
+  --surface-glass-border: rgba(162, 128, 137, 0.14);
+  --surface-glass-hover: rgba(237, 247, 246, 0.88);
 
-  /* Text — rich purples and warm grays */
-  --text-primary: #2d1b4e;
-  --text-secondary: #5c4a78;
-  --text-tertiary: #8a7ba0;
-  --text-muted: #b0a4c4;
+  /* Text — mauve-derived darks and mids */
+  --text-primary: #3d2e33;
+  --text-secondary: #6b555d;
+  --text-tertiary: #917a83;
+  --text-muted: #b8a3ab;
 
   /* Brand / accent */
-  --accent-primary: #DE638A;
-  --accent-primary-hover: #e8497a;
-  --accent-primary-glow: rgba(222, 99, 138, 0.25);
-  --accent-primary-tint: rgba(222, 99, 138, 0.10);
-  --accent-secondary: #4A3267;
-  --accent-secondary-hover: #5c4080;
-  --accent-secondary-glow: rgba(74, 50, 103, 0.18);
-  --accent-secondary-tint: rgba(74, 50, 103, 0.08);
+  --accent-primary: #F9A8B8;
+  --accent-primary-hover: #f48da2;
+  --accent-primary-glow: rgba(249, 168, 184, 0.30);
+  --accent-primary-tint: rgba(249, 168, 184, 0.12);
+  --accent-secondary: #A28089;
+  --accent-secondary-hover: #8e6d76;
+  --accent-secondary-glow: rgba(162, 128, 137, 0.22);
+  --accent-secondary-tint: rgba(162, 128, 137, 0.10);
 
   /* Tertiary tones from palette */
-  --pink-soft: #F7B9C4;
-  --pink-mimi: #F3D9E5;
-  --lavender: #C6BADE;
+  --pink-soft: #F9A8B8;
+  --pink-mimi: #fcd4dc;
+  --lavender: #c5d8d5;
 
   /* Status colors — tuned for light background legibility */
   --color-success: #2e8b57;
@@ -83,10 +83,10 @@
   --radius-xl: 24px;
   --radius-full: 9999px;
 
-  /* Shadows — crisp, high-definition diffused for light theme */
-  --shadow-sm: 0 2px 6px rgba(74, 50, 103, 0.07);
-  --shadow-md: 0 6px 22px rgba(74, 50, 103, 0.09);
-  --shadow-lg: 0 12px 48px rgba(74, 50, 103, 0.13);
+  /* Shadows — teal-rose tinted for the new palette */
+  --shadow-sm: 0 2px 6px rgba(162, 128, 137, 0.08);
+  --shadow-md: 0 6px 22px rgba(162, 128, 137, 0.11);
+  --shadow-lg: 0 12px 48px rgba(162, 128, 137, 0.15);
   --shadow-glow: 0 0 24px var(--accent-primary-glow);
 
   /* Transitions */
@@ -117,10 +117,11 @@ html {
 body {
   font-family: var(--font-family);
   background:
-    radial-gradient(ellipse 900px 500px at 5% -5%, rgba(198, 186, 222, 0.25), transparent 60%),
-    radial-gradient(ellipse 700px 400px at 95% 5%, rgba(222, 99, 138, 0.07), transparent 55%),
-    radial-gradient(ellipse 600px 500px at 50% 100%, rgba(247, 185, 196, 0.08), transparent 60%),
-    linear-gradient(170deg, #f9f7fd 0%, #f4f0fa 20%, #f0ebf6 40%, #f6f3fb 60%, #faf8fe 80%, #ffffff 100%);
+    radial-gradient(ellipse 900px 500px at 0% -5%, rgba(237, 247, 246, 0.55), transparent 60%),
+    radial-gradient(ellipse 800px 600px at 100% 0%, rgba(249, 168, 184, 0.18), transparent 55%),
+    radial-gradient(ellipse 700px 500px at 50% 100%, rgba(162, 128, 137, 0.10), transparent 60%),
+    radial-gradient(ellipse 400px 300px at 80% 50%, rgba(237, 247, 246, 0.25), transparent 50%),
+    linear-gradient(155deg, #EDF7F6 0%, #f2f8f7 15%, #f6f4f3 30%, #fdf5f6 50%, #faf0f1 65%, #f8eced 80%, #EDF7F6 100%);
   background-attachment: fixed;
   color: var(--text-primary);
   line-height: 1.6;
@@ -270,7 +271,7 @@ input:focus, textarea:focus, select:focus {
 .btn-secondary:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
-  border-color: rgba(74, 50, 103, 0.18);
+  border-color: rgba(162, 128, 137, 0.24);
 }
 
 .btn-ghost {

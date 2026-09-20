@@ -1,6 +1,6 @@
 /* ==========================================
    HomePage — Documind Landing & Overview
-   Lavender Bloom Theme
+   Mint-Rose-Mauve Theme · Palette: #EDF7F6 #F9A8B8 #A28089
    ========================================== */
 
 .homepage {
@@ -30,7 +30,7 @@
 .shape-1 {
   width: 480px;
   height: 480px;
-  background: radial-gradient(circle, rgba(222, 99, 138, 0.45) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(249, 168, 184, 0.45) 0%, transparent 70%);
   top: -120px;
   right: -100px;
   animation: float 8s ease-in-out infinite;
@@ -39,7 +39,7 @@
 .shape-2 {
   width: 360px;
   height: 360px;
-  background: radial-gradient(circle, rgba(74, 50, 103, 0.35) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(162, 128, 137, 0.35) 0%, transparent 70%);
   bottom: 200px;
   left: -80px;
   animation: float 10s ease-in-out infinite reverse;
@@ -48,7 +48,7 @@
 .shape-3 {
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, rgba(247, 185, 196, 0.5) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(237, 247, 246, 0.8) 0%, transparent 70%);
   top: 40%;
   right: 10%;
   animation: float 12s ease-in-out infinite;
@@ -68,13 +68,13 @@
   gap: var(--space-2);
   padding: 6px 18px;
   background: var(--bg-tertiary);
-  border: 1px solid rgba(74, 50, 103, 0.1);
+  border: 1px solid rgba(162, 128, 137, 0.2);
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: 600;
-  color: var(--accent-primary);
+  color: #a2586f;
   margin-bottom: var(--space-6);
-  box-shadow: 0 2px 16px rgba(74, 50, 103, 0.06);
+  box-shadow: 0 2px 16px rgba(162, 128, 137, 0.08);
 }
 
 .pulse-dot {
@@ -101,7 +101,7 @@
 }
 
 .text-gradient {
-  background: linear-gradient(130deg, var(--accent-primary) 0%, #c94a72 35%, var(--accent-secondary) 100%);
+  background: linear-gradient(130deg, #d86985 0%, #ba5572 40%, #A28089 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -133,19 +133,19 @@
   font-size: var(--font-size-base);
   font-weight: 600;
   font-family: var(--font-family);
-  background: linear-gradient(135deg, var(--accent-primary), #d14e73);
+  background: linear-gradient(135deg, #F9A8B8, #b65a73);
   color: #ffffff;
   border-radius: var(--radius-md);
   text-decoration: none;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(222, 99, 138, 0.3);
+  box-shadow: 0 4px 20px rgba(249, 168, 184, 0.35);
   transition: all var(--transition-base);
 }
 
 .btn-hero-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 28px rgba(222, 99, 138, 0.45);
+  box-shadow: 0 6px 28px rgba(249, 168, 184, 0.5);
 }
 
 .btn-hero-secondary {
@@ -162,20 +162,20 @@
   border-radius: var(--radius-md);
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(74, 50, 103, 0.2);
+  box-shadow: 0 4px 20px rgba(162, 128, 137, 0.22);
   transition: all var(--transition-base);
 }
 
 .btn-hero-secondary:hover {
   background: var(--accent-secondary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 28px rgba(74, 50, 103, 0.35);
+  box-shadow: 0 6px 28px rgba(162, 128, 137, 0.35);
 }
 
 /* --- Pipeline Visualizer Card --- */
 .pipeline-visualizer {
   background: #ffffff;
-  border: 1px solid rgba(74, 50, 103, 0.08);
+  border: 1px solid rgba(162, 128, 137, 0.14);
   border-radius: var(--radius-xl);
   padding: var(--space-6);
   box-shadow: var(--shadow-lg);
@@ -188,7 +188,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(74, 50, 103, 0.06);
+  border-bottom: 1px solid rgba(162, 128, 137, 0.1);
   padding-bottom: var(--space-4);
   margin-bottom: var(--space-5);
   flex-wrap: wrap;
@@ -239,7 +239,7 @@
 }
 
 .pill-tech {
-  background: rgba(74, 50, 103, 0.06);
+  background: rgba(162, 128, 137, 0.08);
   color: var(--text-tertiary);
 }
 
@@ -253,7 +253,7 @@
 
 .flow-step {
   background: var(--bg-tertiary);
-  border: 1px solid rgba(74, 50, 103, 0.06);
+  border: 1px solid rgba(162, 128, 137, 0.1);
   border-radius: var(--radius-md);
   padding: var(--space-3);
   text-align: center;
@@ -263,7 +263,7 @@
 
 .flow-step:hover {
   border-color: var(--accent-primary);
-  background: rgba(222, 99, 138, 0.04);
+  background: rgba(249, 168, 184, 0.08);
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
 }
@@ -295,7 +295,7 @@
 /* Sample Preview */
 .sample-parsed-card {
   background: var(--bg-tertiary);
-  border: 1px solid rgba(74, 50, 103, 0.06);
+  border: 1px solid rgba(162, 128, 137, 0.1);
   border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-5);
 }
@@ -334,7 +334,7 @@
 
 .sample-field-item {
   background: #ffffff;
-  border: 1px solid rgba(74, 50, 103, 0.05);
+  border: 1px solid rgba(162, 128, 137, 0.08);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
 }
@@ -401,7 +401,7 @@
 
 .capability-card {
   background: #ffffff;
-  border: 1px solid rgba(74, 50, 103, 0.07);
+  border: 1px solid rgba(162, 128, 137, 0.12);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   transition: all var(--transition-base);
@@ -413,8 +413,8 @@
 
 .capability-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(222, 99, 138, 0.25);
-  box-shadow: 0 12px 40px rgba(74, 50, 103, 0.12);
+  border-color: rgba(249, 168, 184, 0.45);
+  box-shadow: 0 12px 40px rgba(162, 128, 137, 0.15);
 }
 
 .capability-icon-wrap {
@@ -426,8 +426,8 @@
   justify-content: center;
   margin-bottom: var(--space-4);
   flex-shrink: 0;
-  background: linear-gradient(145deg, rgba(222, 99, 138, 0.12), rgba(74, 50, 103, 0.08));
-  color: var(--accent-primary);
+  background: linear-gradient(145deg, rgba(249, 168, 184, 0.22), rgba(162, 128, 137, 0.12));
+  color: #b65a73;
 }
 
 .capability-title {
@@ -466,7 +466,7 @@
 
 .stat-box {
   background: #ffffff;
-  border: 1px solid rgba(74, 50, 103, 0.06);
+  border: 1px solid rgba(162, 128, 137, 0.1);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   text-align: center;
@@ -499,14 +499,14 @@
 
 /* --- CTA Banner --- */
 .cta-banner {
-  background: linear-gradient(135deg, #4A3267 0%, #5a3478 50%, #6b3e8a 100%);
+  background: linear-gradient(135deg, #2d1c23 0%, #462834 40%, #6b3b4d 75%, #925167 100%);
   border: none;
   border-radius: var(--radius-xl);
   padding: var(--space-10) var(--space-6);
   text-align: center;
   position: relative;
   z-index: 1;
-  box-shadow: 0 8px 40px rgba(74, 50, 103, 0.25);
+  box-shadow: 0 8px 40px rgba(45, 28, 35, 0.3);
 }
 
 .cta-title {

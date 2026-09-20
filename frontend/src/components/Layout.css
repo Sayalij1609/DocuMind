@@ -1,6 +1,7 @@
 /* ==========================================
    Layout — Sidebar + Main Content Shell
-   Deep purple gradient sidebar with bold white text
+   Mint-Rose-Mauve gradient sidebar with bold white text
+   Palette: #EDF7F6 #F9A8B8 #A28089
    ========================================== */
 
 .app-layout {
@@ -11,7 +12,7 @@
 /* --- Sidebar --- */
 .sidebar {
   width: var(--sidebar-width);
-  background: linear-gradient(180deg, #4A3267 0%, #5a3478 35%, #7e3d7a 60%, #b8507e 80%, #DE638A 100%);
+  background: linear-gradient(180deg, #2d1c23 0%, #432732 25%, #5d3645 50%, #7d485a 75%, #a05c71 90%, #F9A8B8 100%);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -21,7 +22,7 @@
   z-index: 100;
   transition: width var(--transition-base);
   overflow: hidden;
-  box-shadow: 4px 0 28px rgba(74, 50, 103, 0.25);
+  box-shadow: 4px 0 28px rgba(45, 28, 35, 0.3);
 }
 
 .sidebar-collapsed .sidebar {
@@ -49,13 +50,13 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(145deg, var(--accent-primary), #c94a72);
+  background: linear-gradient(145deg, #F9A8B8, #9c556b);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 14px rgba(222, 99, 138, 0.4);
+  box-shadow: 0 2px 14px rgba(249, 168, 184, 0.45);
   transition: transform var(--transition-fast);
 }
 
@@ -126,7 +127,7 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
-  color: rgba(255, 255, 255, 0.85); /* Clear contrast */
+  color: rgba(255, 255, 255, 0.88); /* Clear contrast */
   font-size: 0.9375rem;
   font-weight: 700; /* Bold navigation items */
   letter-spacing: -0.01em;
@@ -143,10 +144,11 @@
 }
 
 .nav-item.active {
-  background: rgba(222, 99, 138, 0.32);
+  background: rgba(249, 168, 184, 0.32);
+  border: 1px solid rgba(249, 168, 184, 0.38);
   color: #ffffff;
   font-weight: 800; /* Extra bold when active */
-  box-shadow: 0 2px 12px rgba(222, 99, 138, 0.25);
+  box-shadow: 0 2px 14px rgba(249, 168, 184, 0.3);
 }
 
 .nav-item.active::before {
@@ -158,8 +160,8 @@
   width: 4px;
   height: 22px;
   border-radius: 0 4px 4px 0;
-  background: #ffffff;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  background: #EDF7F6;
+  box-shadow: 0 0 8px #EDF7F6;
 }
 
 .sidebar-collapsed .nav-item {
@@ -208,19 +210,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(74, 50, 103, 0.12);
+  border: 1px solid rgba(162, 128, 137, 0.18);
   border-radius: var(--radius-lg);
   padding: 10px var(--space-5);
   margin-bottom: var(--space-6);
-  box-shadow: 0 2px 10px rgba(74, 50, 103, 0.05);
+  box-shadow: 0 4px 18px rgba(162, 128, 137, 0.08);
   transition: all var(--transition-fast);
 }
 
 .app-topbar:hover {
-  box-shadow: 0 4px 16px rgba(74, 50, 103, 0.08);
+  box-shadow: 0 6px 24px rgba(162, 128, 137, 0.12);
 }
 
 .topbar-left {
@@ -236,8 +238,8 @@
   gap: 7px;
   padding: 8px 14px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, rgba(74, 50, 103, 0.08) 0%, rgba(222, 99, 138, 0.08) 100%);
-  border: 1px solid rgba(74, 50, 103, 0.14);
+  background: linear-gradient(135deg, rgba(237, 247, 246, 0.9) 0%, rgba(249, 168, 184, 0.22) 100%);
+  border: 1px solid rgba(162, 128, 137, 0.22);
   color: var(--text-primary);
   font-family: var(--font-display);
   font-size: var(--font-size-sm);
@@ -248,17 +250,17 @@
 }
 
 .back-to-home-btn:hover {
-  background: linear-gradient(135deg, #4A3267 0%, #DE638A 100%);
+  background: linear-gradient(135deg, #A28089 0%, #F9A8B8 100%);
   color: #ffffff;
   border-color: transparent;
-  box-shadow: 0 4px 14px rgba(222, 99, 138, 0.3);
+  box-shadow: 0 4px 14px rgba(249, 168, 184, 0.4);
   transform: translateX(-2px);
 }
 
 .topbar-divider {
   width: 1px;
   height: 22px;
-  background: rgba(74, 50, 103, 0.12);
+  background: rgba(162, 128, 137, 0.18);
 }
 
 .topbar-breadcrumb {

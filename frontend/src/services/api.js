@@ -116,3 +116,33 @@ export async function getDocumentDuplicates(documentId) {
 export async function getDocumentAnomaly(documentId) {
   return request(`${API_BASE_URL}/${documentId}/anomaly`);
 }
+
+/* --- AI Semantic Analysis --- */
+
+export async function askDocumentQuestion(documentId, question) {
+  return request(`${API_BASE_URL}/${documentId}/qa`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question }),
+  });
+}
+
+export async function reanalyzeDocument(documentId, apiKey = null) {
+  return request(`${API_BASE_URL}/${documentId}/reanalyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+}
+
+export async function getAIStatus() {
+  return request(`${API_BASE_URL}/ai/status`);
+}
+
+export async function updateAIConfig(apiKey) {
+  return request(`${API_BASE_URL}/ai/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+}
