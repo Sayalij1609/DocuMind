@@ -8,7 +8,6 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Filter,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { getDocuments, deleteDocument } from '../services/api';

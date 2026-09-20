@@ -86,7 +86,7 @@
 
 .filter-chip.active {
   background: var(--accent-primary);
-  color: var(--bg-primary);
+  color: #ffffff;
   font-weight: 600;
   border-color: var(--accent-primary);
 }

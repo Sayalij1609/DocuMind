@@ -46,7 +46,7 @@
 .type-bar-wrapper {
   flex: 1;
   height: 6px;
-  background: var(--bg-primary);
+  background: rgba(74, 50, 103, 0.08);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
