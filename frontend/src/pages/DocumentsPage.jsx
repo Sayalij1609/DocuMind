@@ -33,7 +33,7 @@ export default function DocumentsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
 
-  const { data, loading, error, refetch } = useApi(getDocuments, [1, 200]);
+  const { data, loading, error, refetch } = useApi(getDocuments, [1, 100]);
 
   const allDocuments = data?.documents || [];
 

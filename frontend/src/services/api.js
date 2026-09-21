@@ -14,7 +14,20 @@ async function request(url, options = {}) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message = data?.detail || data?.message || `Request failed (${response.status})`;
+    let message = `Request failed (${response.status})`;
+    if (data?.detail) {
+      if (typeof data.detail === 'string') {
+        message = data.detail;
+      } else if (Array.isArray(data.detail)) {
+        message = data.detail
+          .map((item) => item.msg || item.message || JSON.stringify(item))
+          .join(', ');
+      } else if (typeof data.detail === 'object') {
+        message = data.detail.message || JSON.stringify(data.detail);
+      }
+    } else if (data?.message) {
+      message = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+    }
     const error = new Error(message);
     error.status = response.status;
     throw error;
@@ -45,9 +58,10 @@ export async function deleteDocument(documentId) {
 
 /* --- Upload --- */
 
-export async function uploadDocument(file, onProgress) {
+export async function uploadDocument(file, onProgress, autoProcess = false) {
   const formData = new FormData();
   formData.append('file', file);
+  const uploadUrl = `${API_BASE_URL}/upload?auto_process=${Boolean(autoProcess)}`;
 
   // Use XMLHttpRequest for progress tracking
   if (onProgress) {
@@ -76,14 +90,22 @@ export async function uploadDocument(file, onProgress) {
       xhr.addEventListener('error', () => reject(new Error('Upload failed — network error')));
       xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
 
-      xhr.open('POST', `${API_BASE_URL}/upload`);
+      xhr.open('POST', uploadUrl);
       xhr.send(formData);
     });
   }
 
-  return request(`${API_BASE_URL}/upload`, {
+  return request(uploadUrl, {
     method: 'POST',
     body: formData,
+  });
+}
+
+/* --- Processing / Analysis Trigger --- */
+
+export async function startDocumentProcessing(documentId) {
+  return request(`${API_BASE_URL}/${documentId}/process`, {
+    method: 'POST',
   });
 }
 

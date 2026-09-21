@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   FileText,
@@ -16,15 +16,21 @@ import {
   Clipboard,
   Check,
   Sparkles,
-  Bot,
-  Send,
   RefreshCw,
   Tag,
   ArrowRight,
   Calculator,
   Key,
   X,
-  MessageSquare,
+  Info,
+  Lightbulb,
+  Play,
+  Clock,
+  FileSpreadsheet,
+  FileCheck,
+  Zap,
+  Home,
+  Search,
 } from 'lucide-react';
 import {
   getDocumentAnalysis,
@@ -32,10 +38,10 @@ import {
   getDocumentDuplicates,
   getDocumentAnomaly,
   getDocumentContent,
-  askDocumentQuestion,
   reanalyzeDocument,
   getAIStatus,
   updateAIConfig,
+  startDocumentProcessing,
 } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -72,8 +78,10 @@ export default function DocumentDetailPage() {
 
   const [activeTab, setActiveTab] = useState('overview');
   const [copied, setCopied] = useState(false);
+  const [copiedFieldName, setCopiedFieldName] = useState(null);
+  const [fieldSearch, setFieldSearch] = useState('');
 
-  // States
+  // Core States
   const [analysis, setAnalysis] = useState(null);
   const [validation, setValidation] = useState(null);
   const [duplicates, setDuplicates] = useState(null);
@@ -82,12 +90,7 @@ export default function DocumentDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // AI Q&A states
-  const [qaMessages, setQaMessages] = useState([]);
-  const [qaInput, setQaInput] = useState('');
-  const [qaLoading, setQaLoading] = useState(false);
-  const qaEndRef = useRef(null);
+  const [startingAnalysis, setStartingAnalysis] = useState(false);
 
   // AI Config states
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
@@ -95,6 +98,7 @@ export default function DocumentDetailPage() {
   const [aiStatus, setAiStatus] = useState(null);
   const [reanalyzing, setReanalyzing] = useState(false);
 
+  // Initial Data Load
   useEffect(() => {
     let isMounted = true;
 
@@ -103,12 +107,10 @@ export default function DocumentDetailPage() {
       setError(null);
 
       try {
-        // Fetch core analysis first
         const analysisData = await getDocumentAnalysis(id);
         if (!isMounted) return;
         setAnalysis(analysisData);
 
-        // Fetch other endpoints concurrently in parallel without failing the whole page if one fails
         const [valRes, dupRes, anomRes, contentRes, aiRes] = await Promise.allSettled([
           getDocumentValidation(id),
           getDocumentDuplicates(id),
@@ -139,10 +141,33 @@ export default function DocumentDetailPage() {
     };
   }, [id]);
 
-  // Auto-scroll Q&A
+  // Polling when document is in "processing" state
   useEffect(() => {
-    qaEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [qaMessages]);
+    if (analysis?.status !== 'processing') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const updated = await getDocumentAnalysis(id);
+        if (updated.status !== 'processing') {
+          setAnalysis(updated);
+          const [valRes, dupRes, anomRes, contentRes] = await Promise.allSettled([
+            getDocumentValidation(id),
+            getDocumentDuplicates(id),
+            getDocumentAnomaly(id),
+            getDocumentContent(id),
+          ]);
+          if (valRes.status === 'fulfilled') setValidation(valRes.value);
+          if (dupRes.status === 'fulfilled') setDuplicates(dupRes.value);
+          if (anomRes.status === 'fulfilled') setAnomaly(anomRes.value);
+          if (contentRes.status === 'fulfilled') setContent(contentRes.value);
+        }
+      } catch {
+        // Silently retry on next tick
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [analysis?.status, id]);
 
   const handleCopyText = (text) => {
     if (!text) return;
@@ -151,42 +176,34 @@ export default function DocumentDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleAskQuestion = async () => {
-    if (!qaInput.trim() || qaLoading) return;
+  const handleCopyFieldValue = (name, text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(String(text));
+    setCopiedFieldName(name);
+    setTimeout(() => setCopiedFieldName(null), 2000);
+  };
 
-    const question = qaInput.trim();
-    setQaInput('');
-    setQaMessages(prev => [...prev, { role: 'user', text: question }]);
-    setQaLoading(true);
-
+  const handleStartAnalysis = async () => {
+    setStartingAnalysis(true);
+    setError(null);
     try {
-      const result = await askDocumentQuestion(id, question);
-      setQaMessages(prev => [...prev, {
-        role: 'assistant',
-        text: result.answer,
-        citations: result.citations || [],
-        method: result.method,
-      }]);
-    } catch {
-      setQaMessages(prev => [...prev, {
-        role: 'assistant',
-        text: 'Sorry, I was unable to process your question. Please check your API key configuration and try again.',
-        error: true,
-      }]);
+      await startDocumentProcessing(id);
+      setAnalysis((prev) => ({ ...prev, status: 'processing' }));
+    } catch (err) {
+      setError(err.message || 'Failed to start document processing');
     } finally {
-      setQaLoading(false);
+      setStartingAnalysis(false);
     }
   };
 
   const handleReanalyze = async () => {
     setReanalyzing(true);
     try {
-      const result = await reanalyzeDocument(id);
-      // Refresh the full analysis
+      await reanalyzeDocument(id);
       const newAnalysis = await getDocumentAnalysis(id);
       setAnalysis(newAnalysis);
     } catch {
-      // Silently fail — user can try again
+      // Silently fail
     } finally {
       setReanalyzing(false);
     }
@@ -211,6 +228,16 @@ export default function DocumentDetailPage() {
   const fields = analysis.extraction?.fields || {};
   const fieldEntries = Object.entries(fields);
 
+  // Filtered fields based on search query
+  const filteredFieldEntries = fieldEntries
+    .filter(([name]) => name !== '__ai_analysis__')
+    .filter(([name, f]) => {
+      if (!fieldSearch.trim()) return true;
+      const q = fieldSearch.toLowerCase();
+      const valStr = String(f?.value || '').toLowerCase();
+      return name.toLowerCase().includes(q) || valStr.includes(q);
+    });
+
   // AI Analysis data
   const ai = analysis.ai_analysis || {};
   const aiEntities = ai.entities || {};
@@ -218,71 +245,116 @@ export default function DocumentDetailPage() {
   const aiLineItems = ai.line_items || [];
   const aiFinValidation = ai.financial_validation || {};
   const hasAIAnalysis = !!ai.executive_summary;
+  const aiInsights = ai.insights || [];
+  const aiValidationSummary = ai.validation_summary || '';
+  const aiDuplicateAssessment = ai.duplicate_assessment || '';
+  const aiAnomalyAssessment = ai.anomaly_assessment || '';
+
+  // Computed Audit Values
+  const totalAmountVal =
+    aiEntities.financials?.total ??
+    aiEntities.financials?.stated_total ??
+    analysis.extraction?.fields?.total_amount?.value ??
+    analysis.extraction?.fields?.total?.value ??
+    analysis.extraction?.fields?.amount?.value ??
+    null;
+
+  const invoiceNoVal =
+    aiEntities.identifiers?.find((i) => /invoice/i.test(i.type))?.value ??
+    analysis.extraction?.fields?.invoice_number?.value ??
+    analysis.extraction?.fields?.invoice_id?.value ??
+    null;
+
+  const poNoVal =
+    aiEntities.identifiers?.find((i) => /po|purchase/i.test(i.type))?.value ??
+    analysis.extraction?.fields?.po_number?.value ??
+    analysis.extraction?.fields?.purchase_order?.value ??
+    null;
+
+  const vendorVal =
+    aiEntities.parties?.find((p) => /vendor|issuer/i.test(p.role))?.name ??
+    analysis.extraction?.fields?.vendor_name?.value ??
+    analysis.extraction?.fields?.merchant_name?.value ??
+    null;
+
+  const primaryDateVal =
+    aiEntities.dates?.[0]?.value ??
+    analysis.extraction?.fields?.invoice_date?.value ??
+    analysis.extraction?.fields?.date?.value ??
+    null;
+
+  const isUploadedOnly = analysis.status === 'uploaded';
+  const isProcessing = analysis.status === 'processing';
 
   return (
     <div className="document-detail-page animate-fade-in">
-      {/* Header & Breadcrumbs */}
+      {/* Top Header & Breadcrumbs */}
       <div className="detail-header">
-        <div>
+        <div className="detail-header-left">
           <nav className="breadcrumb-nav">
             <Link to="/documents" className="breadcrumb-link">
               Documents
             </Link>
             <ChevronRight size={14} />
-            <span>{analysis.filename}</span>
+            <span className="breadcrumb-current">{analysis.filename}</span>
           </nav>
 
-          <div className="detail-title">
-            <FileText size={28} style={{ color: 'var(--accent-primary)' }} />
-            <span>{analysis.filename}</span>
+          <div className="detail-title-row">
+            <div className="detail-file-icon">
+              <FileText size={24} />
+            </div>
+            <h1 className="detail-filename" title={analysis.filename}>
+              {analysis.filename}
+            </h1>
             <StatusBadge status={analysis.status} />
           </div>
 
-          <div className="detail-meta-pills">
+          <div className="detail-meta-row">
             <span className="meta-pill">
-              Type: <strong style={{ textTransform: 'capitalize' }}>{analysis.document_type || 'Unclassified'}</strong>
+              Type: <strong>{(analysis.document_type || 'Unclassified').toUpperCase()}</strong>
             </span>
-            {analysis.classification_confidence != null && (
-              <span className="meta-pill">
-                Confidence: <strong>{(analysis.classification_confidence * 100).toFixed(1)}%</strong>
-              </span>
-            )}
-            <span className="meta-pill">ID: {analysis.document_id}</span>
             <span className="meta-pill">
-              Created: {new Date(analysis.created_at).toLocaleString()}
+              Format: <strong>{(analysis.file_type || 'PDF').toUpperCase()}</strong>
             </span>
+            <span className="meta-pill">
+              Size: <strong>{analysis.file_size ? `${(analysis.file_size / 1024).toFixed(1)} KB` : '—'}</strong>
+            </span>
+            <span className="meta-pill">
+              Uploaded: <strong>{new Date(analysis.created_at).toLocaleDateString()}</strong>
+            </span>
+            <span className="meta-pill mono">ID: {analysis.document_id.slice(0, 12)}...</span>
           </div>
         </div>
 
         <div className="detail-header-actions">
-          <button
-            className="btn btn-accent-outline"
-            onClick={() => setShowApiKeyDialog(true)}
-            title="Configure AI API Key"
-          >
-            <Key size={15} />
-            {aiStatus?.configured ? 'AI Active' : 'Configure AI'}
+          {!isUploadedOnly && !isProcessing && (
+            <button
+              className="btn btn-accent btn-sm"
+              onClick={handleReanalyze}
+              disabled={reanalyzing}
+              title="Re-run Document Audit"
+            >
+              <RefreshCw size={14} className={reanalyzing ? 'spin-animation' : ''} />
+              <span>{reanalyzing ? 'Auditing...' : 'Re-Audit'}</span>
+            </button>
+          )}
+
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate('/documents')} title="Back to Document List">
+            <ArrowLeft size={14} />
+            <span>Documents</span>
           </button>
-          <button
-            className="btn btn-accent"
-            onClick={handleReanalyze}
-            disabled={reanalyzing}
-            title="Re-run AI Analysis"
-          >
-            <RefreshCw size={15} className={reanalyzing ? 'spin-animation' : ''} />
-            {reanalyzing ? 'Analyzing...' : 'Re-Analyze'}
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/documents')}>
-            <ArrowLeft size={16} />
-            Back to List
-          </button>
+
+          <Link to="/" className="btn btn-secondary btn-sm" title="Back to Home">
+            <Home size={14} />
+            <span>Home</span>
+          </Link>
         </div>
       </div>
 
-      {/* API Key Dialog */}
+      {/* API Key Dialog Modal */}
       {showApiKeyDialog && (
         <div className="dialog-overlay animate-fade-in" onClick={() => setShowApiKeyDialog(false)}>
-          <div className="dialog-box" onClick={e => e.stopPropagation()}>
+          <div className="dialog-box" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-header">
               <h3><Key size={18} /> Configure Groq API Key</h3>
               <button className="dialog-close" onClick={() => setShowApiKeyDialog(false)}>
@@ -290,7 +362,7 @@ export default function DocumentDetailPage() {
               </button>
             </div>
             <p className="dialog-desc">
-              Enter your Groq API key to enable AI-powered document analysis, semantic entity extraction, and intelligent Q&A. Get your key at{' '}
+              Enter your Groq API key to enable Llama-3.3-70B document analysis, semantic entity extraction, and detailed insights. Get your key at{' '}
               <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer">console.groq.com</a>.
             </p>
             <div className="dialog-input-row">
@@ -299,8 +371,8 @@ export default function DocumentDetailPage() {
                 className="dialog-input"
                 placeholder="gsk_..."
                 value={apiKeyInput}
-                onChange={e => setApiKeyInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSaveApiKey()}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveApiKey()}
               />
               <button className="btn btn-accent" onClick={handleSaveApiKey}>
                 Save Key
@@ -318,214 +390,216 @@ export default function DocumentDetailPage() {
         </div>
       )}
 
-      {/* Executive Summary Hero */}
-      {hasAIAnalysis && (
-        <div className="ai-summary-hero animate-fade-in">
-          <div className="ai-hero-badge">
-            <Sparkles size={14} />
-            AI Analysis — {ai.analysis_method === 'groq_llm' ? 'Groq LLM' : 'Local Heuristic'}
+      {/* STATE 1: DOCUMENT UPLOADED (READY FOR ANALYSIS) */}
+      {isUploadedOnly && (
+        <div className="staging-ready-screen card animate-fade-in">
+          <div className="staging-ready-header">
+            <div className="staging-ready-icon-wrap">
+              <Clock size={32} className="staging-ready-icon" />
+            </div>
+            <div>
+              <h2 className="staging-ready-title">Document Staged & Ready for Analysis</h2>
+              <p className="staging-ready-subtitle">
+                This document is safely stored in the repository. Click below to initiate the automated 6-point extraction and compliance audit.
+              </p>
+            </div>
           </div>
-          <p className="ai-hero-text">{ai.executive_summary}</p>
-          {ai.risk_narrative && ai.risk_narrative !== 'No issues detected' && (
-            <div className="ai-hero-risk">
-              <AlertTriangle size={14} />
-              <span>{ai.risk_narrative}</span>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* Semantic Relationship Badges */}
-      {aiRelationships.length > 0 && (
-        <div className="semantic-badges-row animate-fade-in">
-          {aiRelationships.map((rel, i) => (
-            <div key={i} className="semantic-badge">
-              <span className="sem-entity">{rel.entity}</span>
-              <ArrowRight size={12} className="sem-arrow" />
-              <span className="sem-role">{rel.role}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tabs Navigation */}
-      <div className="tabs-nav">
-        <button
-          className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          <Activity size={16} />
-          Overview
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === 'extraction' ? 'active' : ''}`}
-          onClick={() => setActiveTab('extraction')}
-        >
-          <Layers size={16} />
-          Extraction
-          <span className="tab-badge badge-count">{fieldEntries.length}</span>
-        </button>
-
-        {aiLineItems.length > 0 && (
-          <button
-            className={`tab-btn ${activeTab === 'line-items' ? 'active' : ''}`}
-            onClick={() => setActiveTab('line-items')}
-          >
-            <Tag size={16} />
-            Line Items
-            <span className="tab-badge badge-count">{aiLineItems.length}</span>
-          </button>
-        )}
-
-        {Object.keys(aiFinValidation).length > 0 && (
-          <button
-            className={`tab-btn ${activeTab === 'finance' ? 'active' : ''}`}
-            onClick={() => setActiveTab('finance')}
-          >
-            <Calculator size={16} />
-            Math Check
-            {aiFinValidation.is_valid === true && (
-              <span className="tab-badge badge-count">✓</span>
-            )}
-            {aiFinValidation.is_valid === false && (
-              <span className="tab-badge badge-alert">✗</span>
-            )}
-          </button>
-        )}
-
-        <button
-          className={`tab-btn ${activeTab === 'validation' ? 'active' : ''}`}
-          onClick={() => setActiveTab('validation')}
-        >
-          <ShieldCheck size={16} />
-          Validation
-          {validation && (
-            <span
-              className={`tab-badge ${
-                validation.error_count > 0
-                  ? 'badge-alert'
-                  : validation.warning_count > 0
-                  ? 'badge-warn'
-                  : 'badge-count'
-              }`}
-            >
-              {validation.error_count > 0 ? `${validation.error_count} Errors` : validation.status}
-            </span>
-          )}
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === 'duplicates' ? 'active' : ''}`}
-          onClick={() => setActiveTab('duplicates')}
-        >
-          <Copy size={16} />
-          Duplicates
-          {duplicates?.has_duplicates && (
-            <span className="tab-badge badge-warn">{duplicates.matches?.length || 0}</span>
-          )}
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === 'anomaly' ? 'active' : ''}`}
-          onClick={() => setActiveTab('anomaly')}
-        >
-          <AlertTriangle size={16} />
-          Anomaly
-          {anomaly?.is_anomaly && <span className="tab-badge badge-alert">Outlier</span>}
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === 'copilot' ? 'active' : ''}`}
-          onClick={() => setActiveTab('copilot')}
-        >
-          <MessageSquare size={16} />
-          AI Copilot
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === 'content' ? 'active' : ''}`}
-          onClick={() => setActiveTab('content')}
-        >
-          <FileCode size={16} />
-          Raw Content
-        </button>
-      </div>
-
-      {/* Tab: Overview */}
-      {activeTab === 'overview' && (
-        <div className="overview-tab animate-fade-in">
-          <div className="overview-grid">
-            <div className="card">
-              <h3 className="overview-section-title">
-                <FileText size={18} style={{ color: 'var(--accent-primary)' }} />
-                Document Metadata
-              </h3>
-              <div className="kv-list">
-                <div className="kv-item">
-                  <span className="kv-key">Document ID</span>
-                  <span className="kv-val" style={{ fontFamily: 'monospace' }}>
-                    {analysis.document_id}
-                  </span>
+          <div className="staging-ready-body">
+            <div className="staging-pipeline-list">
+              <h4 className="staging-pipeline-heading">
+                <Zap size={16} /> Pipeline Audits to be Performed:
+              </h4>
+              <div className="staging-pipeline-grid">
+                <div className="staging-step-item">
+                  <span className="step-badge">1</span>
+                  <div>
+                    <strong>OCR Text Extraction</strong>
+                    <p>Tesseract engine normalizes raw textual layout</p>
+                  </div>
                 </div>
-                <div className="kv-item">
-                  <span className="kv-key">File Format</span>
-                  <span className="kv-val">{analysis.file_type || '—'}</span>
+                <div className="staging-step-item">
+                  <span className="step-badge">2</span>
+                  <div>
+                    <strong>ML Classification</strong>
+                    <p>TF-IDF + SGD model predicts document class</p>
+                  </div>
                 </div>
-                <div className="kv-item">
-                  <span className="kv-key">File Size</span>
-                  <span className="kv-val">
-                    {analysis.file_size ? `${(analysis.file_size / 1024).toFixed(1)} KB` : '—'}
-                  </span>
+                <div className="staging-step-item">
+                  <span className="step-badge">3</span>
+                  <div>
+                    <strong>Field Extraction</strong>
+                    <p>Heuristic regex extracts amounts, dates & entities</p>
+                  </div>
                 </div>
-                <div className="kv-item">
-                  <span className="kv-key">Processing Status</span>
-                  <StatusBadge status={analysis.status} />
+                <div className="staging-step-item">
+                  <span className="step-badge">4</span>
+                  <div>
+                    <strong>Deterministic Validation</strong>
+                    <p>6 enterprise business rules verify compliance</p>
+                  </div>
+                </div>
+                <div className="staging-step-item">
+                  <span className="step-badge">5</span>
+                  <div>
+                    <strong>Duplicate & Anomaly Check</strong>
+                    <p>Isolation Forest and vector similarity scans</p>
+                  </div>
+                </div>
+                <div className="staging-step-item">
+                  <span className="step-badge">6</span>
+                  <div>
+                    <strong>Executive Audit Synthesis</strong>
+                    <p>Generates executive summary and audit observations</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="card">
-              <h3 className="overview-section-title">
-                <Activity size={18} style={{ color: 'var(--accent-secondary)' }} />
-                Classification
-              </h3>
-              <div className="kv-list">
-                <div className="kv-item">
-                  <span className="kv-key">Predicted Class</span>
-                  <span className="kv-val" style={{ textTransform: 'capitalize', fontWeight: 600 }}>
-                    {analysis.document_type || 'Unclassified'}
-                  </span>
-                </div>
-                <div className="kv-item">
-                  <span className="kv-key">Confidence</span>
-                  <span className="kv-val">
-                    {analysis.classification_confidence != null
-                      ? `${(analysis.classification_confidence * 100).toFixed(1)}%`
-                      : '—'}
-                  </span>
-                </div>
-                <div className="kv-item">
-                  <span className="kv-key">Extraction Method</span>
-                  <span className="kv-val">
-                    {analysis.extraction?.extraction_method || 'Standard (Rule/Regex)'}
-                  </span>
-                </div>
-                <div className="kv-item">
-                  <span className="kv-key">Fields Extracted</span>
-                  <span className="kv-val">{fieldEntries.length}</span>
-                </div>
+            <div className="staging-ready-cta-box">
+              <button
+                className="btn btn-primary staging-start-cta"
+                onClick={handleStartAnalysis}
+                disabled={startingAnalysis}
+              >
+                {startingAnalysis ? (
+                  <>
+                    <RefreshCw size={18} className="spin-animation" />
+                    <span>Initiating Pipeline...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={16} />
+                    <span>Execute Document Audit</span>
+                  </>
+                )}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowApiKeyDialog(true)}
+              >
+                <Key size={14} />
+                <span>{aiStatus?.configured ? 'AI Key Ready' : 'Set Groq API Key'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STATE 2: PROCESSING IN PROGRESS (ACTIVE STEPPER) */}
+      {isProcessing && (
+        <div className="processing-progress-screen card animate-fade-in">
+          <div className="processing-hero">
+            <div className="processing-spinner-outer">
+              <RefreshCw size={36} className="spin-animation text-accent" />
+            </div>
+            <h2 className="processing-title">Auditing Document in Real-Time</h2>
+            <p className="processing-subtitle">
+              Running OCR extraction, machine learning classification, rule validation, and audit checks.
+            </p>
+          </div>
+
+          <div className="pipeline-stepper">
+            <div className="stepper-step completed">
+              <div className="stepper-dot"><CheckCircle2 size={16} /></div>
+              <div className="stepper-content">
+                <strong>1. Ingestion & Storage</strong>
+                <span>File saved securely</span>
               </div>
             </div>
 
-            <div className="card">
-              <h3 className="overview-section-title">
-                <ShieldCheck size={18} style={{ color: 'var(--color-success)' }} />
-                Quality & Compliance
-              </h3>
-              <div className="kv-list">
-                <div className="kv-item">
-                  <span className="kv-key">Validation Status</span>
+            <div className="stepper-step active">
+              <div className="stepper-dot"><span className="pulse-dot" /></div>
+              <div className="stepper-content">
+                <strong>2. Layout & OCR Normalization</strong>
+                <span>Tesseract extracting coordinate bounding boxes</span>
+              </div>
+            </div>
+
+            <div className="stepper-step active">
+              <div className="stepper-dot"><span className="pulse-dot" /></div>
+              <div className="stepper-content">
+                <strong>3. Classification</strong>
+                <span>Categorizing document type via SGD classifier</span>
+              </div>
+            </div>
+
+            <div className="stepper-step active">
+              <div className="stepper-dot"><span className="pulse-dot" /></div>
+              <div className="stepper-content">
+                <strong>4. Field Extraction</strong>
+                <span>Identifying key-value fields and financial totals</span>
+              </div>
+            </div>
+
+            <div className="stepper-step active">
+              <div className="stepper-dot"><span className="pulse-dot" /></div>
+              <div className="stepper-content">
+                <strong>5. Rule Validation</strong>
+                <span>Evaluating 6 deterministic business compliance rules</span>
+              </div>
+            </div>
+
+            <div className="stepper-step active">
+              <div className="stepper-dot"><span className="pulse-dot" /></div>
+              <div className="stepper-content">
+                <strong>6. Audit Findings</strong>
+                <span>Generating executive summary & audit observations</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="processing-poll-indicator">
+            <span className="poll-spinner" />
+            <span>Polling analysis status every 2 seconds... Your page will automatically refresh once finished.</span>
+          </div>
+        </div>
+      )}
+
+      {/* STATE 3: COMPLETED ANALYSIS (AIRY, EXECUTIVE WORKSPACE) */}
+      {!isUploadedOnly && !isProcessing && (
+        <>
+          {/* 4-Metric Audit Health Ribbon */}
+          <div className="audit-health-ribbon">
+            <div className="health-tile card">
+              <div className="tile-icon-wrap class-icon">
+                <Activity size={18} />
+              </div>
+              <div className="tile-content">
+                <span className="tile-label">Document Classification</span>
+                <strong className="tile-main-value capitalize">
+                  {analysis.document_type || 'Unclassified'}
+                </strong>
+                {analysis.classification_confidence != null && (
+                  <span className="tile-sub success">
+                    {(analysis.classification_confidence * 100).toFixed(1)}% model confidence
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="health-tile card">
+              <div className="tile-icon-wrap field-icon">
+                <Calculator size={18} />
+              </div>
+              <div className="tile-content">
+                <span className="tile-label">Gross Financial Liability</span>
+                <strong className="tile-main-value text-accent">
+                  {totalAmountVal != null ? formatRupees(totalAmountVal) : '—'}
+                </strong>
+                <span className="tile-sub">
+                  Currency: {aiEntities.financials?.currency || 'INR (₹)'}
+                </span>
+              </div>
+            </div>
+
+            <div className="health-tile card">
+              <div className="tile-icon-wrap rule-icon">
+                <ShieldCheck size={18} />
+              </div>
+              <div className="tile-content">
+                <span className="tile-label">Deterministic Compliance</span>
+                <div className="tile-status-line">
                   <StatusBadge
                     status={
                       analysis.validation_status === 'VALID'
@@ -534,559 +608,759 @@ export default function DocumentDetailPage() {
                         ? 'invalid'
                         : analysis.validation_status === 'WARNING'
                         ? 'warning'
-                        : 'pending'
+                        : 'normal'
                     }
                   />
-                </div>
-                <div className="kv-item">
-                  <span className="kv-key">Validation Failures</span>
-                  <span
-                    className="kv-val"
-                    style={{
-                      color:
-                        analysis.validation_error_count > 0
-                          ? 'var(--color-error)'
-                          : 'var(--text-primary)',
-                    }}
-                  >
-                    {analysis.validation_error_count ?? 0}
+                  <span className="tile-sub">
+                    {analysis.validation_error_count ?? 0} errors
                   </span>
                 </div>
-                <div className="kv-item">
-                  <span className="kv-key">Duplicate Detected</span>
-                  <StatusBadge
-                    status={analysis.has_duplicates ? 'duplicate' : 'normal'}
-                    label={analysis.has_duplicates ? 'Yes' : 'No'}
-                  />
-                </div>
-                <div className="kv-item">
-                  <span className="kv-key">Anomaly Assessment</span>
-                  <StatusBadge
-                    status={analysis.is_anomaly ? 'anomaly' : 'normal'}
-                    label={analysis.is_anomaly ? 'Anomaly' : 'Normal'}
-                  />
-                </div>
               </div>
             </div>
-          </div>
 
-          {/* AI Entities Overview */}
-          {hasAIAnalysis && (
-            <div className="ai-entities-overview card">
-              <h3 className="overview-section-title">
-                <Sparkles size={18} style={{ color: 'var(--accent-primary)' }} />
-                Semantic Entity Map
-              </h3>
-              <div className="entities-grid">
-                {/* Parties */}
-                {(aiEntities.parties || []).length > 0 && (
-                  <div className="entity-section">
-                    <h4 className="entity-section-label">Parties</h4>
-                    {aiEntities.parties.map((p, i) => (
-                      <div key={i} className="entity-card-mini">
-                        <span className="entity-role-tag">{p.role}</span>
-                        <span className="entity-name">{p.name || '—'}</span>
-                        {p.address && <span className="entity-detail">{p.address}</span>}
-                        {p.tax_id && <span className="entity-detail">Tax ID: {p.tax_id}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Identifiers */}
-                {(aiEntities.identifiers || []).filter(i => i.value).length > 0 && (
-                  <div className="entity-section">
-                    <h4 className="entity-section-label">Identifiers</h4>
-                    {aiEntities.identifiers.filter(i => i.value).map((ident, i) => (
-                      <div key={i} className="entity-card-mini">
-                        <span className="entity-role-tag">{ident.type?.replace(/_/g, ' ')}</span>
-                        <span className="entity-name mono">{ident.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Dates */}
-                {(aiEntities.dates || []).filter(d => d.value).length > 0 && (
-                  <div className="entity-section">
-                    <h4 className="entity-section-label">Dates</h4>
-                    {aiEntities.dates.filter(d => d.value).map((d, i) => (
-                      <div key={i} className="entity-card-mini">
-                        <span className="entity-role-tag">{d.type?.replace(/_/g, ' ')}</span>
-                        <span className="entity-name">{d.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Financials */}
-                {aiEntities.financials && Object.keys(aiEntities.financials).length > 0 && (
-                  <div className="entity-section">
-                    <h4 className="entity-section-label">Financials</h4>
-                    {Object.entries(aiEntities.financials).filter(([, v]) => v != null).map(([k, v]) => (
-                      <div key={k} className="entity-card-mini">
-                        <span className="entity-role-tag">{k.replace(/_/g, ' ')}</span>
-                        <span className="entity-name mono">
-                          {typeof v === 'number' ? v.toLocaleString() : String(v)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            <div className="health-tile card">
+              <div className="tile-icon-wrap anomaly-icon">
+                <AlertTriangle size={18} />
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Extraction */}
-      {activeTab === 'extraction' && (
-        <div className="extraction-tab card animate-fade-in" style={{ padding: 0 }}>
-          {fieldEntries.length === 0 ? (
-            <EmptyState message="No fields were extracted for this document." />
-          ) : (
-            <table className="fields-table">
-              <thead>
-                <tr>
-                  <th>Field</th>
-                  <th>Extracted Value</th>
-                  <th>Confidence</th>
-                  <th>Source</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fieldEntries
-                  .filter(([name]) => name !== '__ai_analysis__')
-                  .map(([name, field]) => (
-                  <tr key={name}>
-                    <td className="field-key">{name.replace(/_/g, ' ')}</td>
-                    <td>
-                      <span className="field-val-box">
-                        {formatFieldValue(name, field?.value)}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="confidence-meter">
-                        <div className="meter-bar">
-                          <div
-                            className="meter-fill"
-                            style={{
-                              width: `${(field?.confidence || 0) * 100}%`,
-                              background:
-                                (field?.confidence || 0) > 0.8
-                                  ? 'var(--color-success)'
-                                  : 'var(--color-warning)',
-                            }}
-                          />
-                        </div>
-                        <span style={{ fontSize: 'var(--font-size-xs)' }}>
-                          {((field?.confidence || 0) * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="meta-pill">{field?.source || 'heuristic'}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Line Items */}
-      {activeTab === 'line-items' && (
-        <div className="line-items-tab card animate-fade-in" style={{ padding: 0 }}>
-          {aiLineItems.length === 0 ? (
-            <EmptyState message="No line items extracted." />
-          ) : (
-            <table className="fields-table line-items-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Description</th>
-                  <th style={{ textAlign: 'right' }}>Qty</th>
-                  <th style={{ textAlign: 'right' }}>Unit Price (₹)</th>
-                  <th style={{ textAlign: 'right' }}>Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {aiLineItems.map((item, idx) => (
-                  <tr key={idx}>
-                    <td style={{ color: 'var(--text-muted)' }}>{idx + 1}</td>
-                    <td>{item.description || '—'}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                      {item.quantity ?? '—'}
-                    </td>
-                    <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                      {item.unit_price != null ? formatRupees(item.unit_price) : '—'}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, fontFamily: 'monospace' }}>
-                      {item.amount != null ? formatRupees(item.amount) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Financial Reconciler */}
-      {activeTab === 'finance' && (
-        <div className="finance-tab animate-fade-in">
-          <div className="card finance-card">
-            <h3 className="overview-section-title">
-              <Calculator size={18} style={{ color: 'var(--accent-primary)' }} />
-              Arithmetic Validation
-            </h3>
-
-            <div className="finance-grid">
-              <div className="finance-row">
-                <span>Subtotal</span>
-                <span className="mono">{formatRupees(aiFinValidation.subtotal)}</span>
-              </div>
-              <div className="finance-row">
-                <span>+ Tax</span>
-                <span className="mono">{formatRupees(aiFinValidation.tax)}</span>
-              </div>
-              <div className="finance-row">
-                <span>− Discount</span>
-                <span className="mono">{formatRupees(aiFinValidation.discount)}</span>
-              </div>
-              <div className="finance-divider" />
-              <div className="finance-row total-row">
-                <span>Computed Total</span>
-                <span className="mono">{formatRupees(aiFinValidation.computed_total)}</span>
-              </div>
-              <div className="finance-row total-row">
-                <span>Stated Total</span>
-                <span className="mono">{formatRupees(aiFinValidation.stated_total)}</span>
-              </div>
-              <div className="finance-divider" />
-              <div className="finance-row verdict-row">
-                <span>Verdict</span>
-                <span>
-                  {aiFinValidation.is_valid === true && (
-                    <span className="verdict-pass"><CheckCircle2 size={16} /> Match — No Discrepancy</span>
-                  )}
-                  {aiFinValidation.is_valid === false && (
-                    <span className="verdict-fail">
-                      <AlertCircle size={16} /> Discrepancy: {formatRupees(aiFinValidation.discrepancy)}
-                    </span>
-                  )}
-                  {aiFinValidation.is_valid == null && (
-                    <span className="verdict-unknown">Insufficient data</span>
-                  )}
+              <div className="tile-content">
+                <span className="tile-label">Integrity & Risk</span>
+                <strong className={`tile-main-value ${analysis.is_anomaly ? 'text-anomaly' : 'text-success'}`}>
+                  {analysis.is_anomaly ? 'Outlier Flagged' : 'Normal Structure'}
+                </strong>
+                <span className="tile-sub">
+                  {analysis.has_duplicates ? 'Duplicate Found' : 'Unique Record'}
                 </span>
               </div>
             </div>
+          </div>
 
-            {aiFinValidation.notes && (
-              <p className="finance-notes">{aiFinValidation.notes}</p>
+          {/* Tabs Navigation */}
+          <div className="tabs-nav">
+            <button
+              className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => setActiveTab('overview')}
+            >
+              <Activity size={16} />
+              <span>Audit Summary</span>
+            </button>
+
+            <button
+              className={`tab-btn ${activeTab === 'extraction' ? 'active' : ''}`}
+              onClick={() => setActiveTab('extraction')}
+            >
+              <Layers size={16} />
+              <span>Extracted Fields</span>
+              <span className="tab-badge badge-count">{fieldEntries.length}</span>
+            </button>
+
+            {aiLineItems.length > 0 && (
+              <button
+                className={`tab-btn ${activeTab === 'line-items' ? 'active' : ''}`}
+                onClick={() => setActiveTab('line-items')}
+              >
+                <Tag size={16} />
+                <span>Line Items</span>
+                <span className="tab-badge badge-count">{aiLineItems.length}</span>
+              </button>
             )}
-          </div>
-        </div>
-      )}
 
-      {/* Tab: Validation */}
-      {activeTab === 'validation' && (
-        <div className="validation-tab animate-fade-in">
-          {!validation || !validation.results || validation.results.length === 0 ? (
-            <div className="card">
-              <EmptyState message="No validation rules executed for this document type." />
-            </div>
-          ) : (
-            <div className="rules-list">
-              {validation.results.map((rule, idx) => {
-                const isPass = rule.status === 'PASS';
-                const isFail = rule.status === 'FAIL';
-                const isWarn = rule.status === 'WARN';
-
-                return (
-                  <div
-                    key={idx}
-                    className={`rule-item ${isPass ? 'pass' : isFail ? 'fail' : 'warn'}`}
-                  >
-                    {isPass && <CheckCircle2 size={20} style={{ color: 'var(--color-success)' }} />}
-                    {isFail && <AlertCircle size={20} style={{ color: 'var(--color-error)' }} />}
-                    {isWarn && <AlertTriangle size={20} style={{ color: 'var(--color-warning)' }} />}
-
-                    <div className="rule-body">
-                      <div className="rule-title-row">
-                        <span className="rule-name">{rule.rule_name}</span>
-                        <StatusBadge
-                          status={isPass ? 'valid' : isFail ? 'invalid' : 'warning'}
-                          label={rule.status}
-                        />
-                      </div>
-                      <p className="rule-desc">{rule.message}</p>
-                      {rule.details && Object.keys(rule.details).length > 0 && (
-                        <div
-                          style={{
-                            marginTop: '8px',
-                            background: 'var(--bg-tertiary)',
-                            padding: '6px 10px',
-                            borderRadius: 'var(--radius-sm)',
-                            fontSize: 'var(--font-size-xs)',
-                            fontFamily: 'monospace',
-                          }}
-                        >
-                          {JSON.stringify(rule.details)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Duplicates */}
-      {activeTab === 'duplicates' && (
-        <div className="duplicates-tab animate-fade-in">
-          <div className="card">
-            <h3 className="overview-section-title">
-              <Copy size={18} style={{ color: 'var(--accent-primary)' }} />
-              Similarity & Duplication Analysis
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-4)' }}>
-              Evaluated using TF-IDF cosine vector matching against existing repository documents of the same category.
-            </p>
-
-            {!duplicates || !duplicates.matches || duplicates.matches.length === 0 ? (
-              <EmptyState message="No duplicate matches found. This document is unique." />
-            ) : (
-              <div className="rules-list">
-                {duplicates.matches.map((match, idx) => (
-                  <div key={idx} className="rule-item warn">
-                    <Copy size={20} style={{ color: 'var(--color-warning)' }} />
-                    <div className="rule-body">
-                      <div className="rule-title-row">
-                        <span className="rule-name">
-                          Matched Document: {match.matched_document_id}
-                        </span>
-                        <span className="meta-pill" style={{ textTransform: 'uppercase' }}>
-                          {match.duplicate_type}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
-                        <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-                          Similarity Score: <strong>{(match.similarity_score * 100).toFixed(2)}%</strong>
-                        </span>
-                        <button
-                          className="btn btn-secondary"
-                          style={{ padding: '4px 10px', fontSize: 'var(--font-size-xs)' }}
-                          onClick={() => navigate(`/documents/${match.matched_document_id}`)}
-                        >
-                          View Document
-                          <ExternalLink size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            {Object.keys(aiFinValidation).length > 0 && (
+              <button
+                className={`tab-btn ${activeTab === 'finance' ? 'active' : ''}`}
+                onClick={() => setActiveTab('finance')}
+              >
+                <Calculator size={16} />
+                <span>Math Check</span>
+                {aiFinValidation.is_valid === true && <span className="tab-badge badge-count">✓</span>}
+                {aiFinValidation.is_valid === false && <span className="tab-badge badge-alert">✗</span>}
+              </button>
             )}
-          </div>
-        </div>
-      )}
 
-      {/* Tab: Anomaly Analysis */}
-      {activeTab === 'anomaly' && (
-        <div className="anomaly-tab animate-fade-in">
-          <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-            <h3 className="overview-section-title">
-              <AlertTriangle size={18} style={{ color: 'var(--color-anomaly)' }} />
-              Isolation Forest Evaluation
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-4)' }}>
-              Structural and numerical anomaly detection identifying mathematical outliers in extracted features.
-            </p>
-
-            <div className="overview-grid" style={{ marginBottom: 0 }}>
-              <div className="card" style={{ background: 'var(--bg-secondary)' }}>
-                <span className="kv-key">Anomaly Status</span>
-                <div style={{ marginTop: '8px' }}>
-                  <StatusBadge
-                    status={anomaly?.is_anomaly ? 'anomaly' : 'normal'}
-                    label={anomaly?.is_anomaly ? 'Flagged Anomaly' : 'Normal Document'}
-                  />
-                </div>
-              </div>
-
-              <div className="card" style={{ background: 'var(--bg-secondary)' }}>
-                <span className="kv-key">Anomaly Score</span>
-                <div style={{ marginTop: '8px', fontSize: 'var(--font-size-xl)', fontWeight: 700 }}>
-                  {anomaly?.anomaly_score != null ? anomaly.anomaly_score : '—'}
-                </div>
-              </div>
-
-              <div className="card" style={{ background: 'var(--bg-secondary)' }}>
-                <span className="kv-key">Decision Function Score</span>
-                <div style={{ marginTop: '8px', fontSize: 'var(--font-size-xl)', fontWeight: 700 }}>
-                  {anomaly?.decision_function_score != null ? anomaly.decision_function_score : '—'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Features Table */}
-          {anomaly?.features && Object.keys(anomaly.features).length > 0 && (
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid var(--surface-glass-border)' }}>
-                <h4 style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-                  Evaluated Feature Vectors
-                </h4>
-              </div>
-              <table className="fields-table">
-                <thead>
-                  <tr>
-                    <th>Feature Name</th>
-                    <th>Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(anomaly.features).map(([fKey, fVal]) => (
-                    <tr key={fKey}>
-                      <td className="field-key">{fKey.replace(/_/g, ' ')}</td>
-                      <td>
-                        <span className="field-val-box">
-                          {typeof fVal === 'number' ? fVal.toLocaleString() : String(fVal)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: AI Copilot */}
-      {activeTab === 'copilot' && (
-        <div className="copilot-tab animate-fade-in">
-          <div className="copilot-card card">
-            <div className="copilot-header">
-              <Bot size={20} />
-              <h3>DocuMind AI Copilot</h3>
-              <span className="copilot-badge">
-                {aiStatus?.configured ? 'Groq LLM Active' : 'Local Mode'}
-              </span>
-            </div>
-
-            <div className="copilot-messages">
-              {qaMessages.length === 0 && (
-                <div className="copilot-welcome">
-                  <Sparkles size={24} className="copilot-welcome-icon" />
-                  <p>Ask anything about this document.</p>
-                  <div className="copilot-suggestions">
-                    {[
-                      'What is the total amount?',
-                      'Who is the vendor?',
-                      'What is the due date?',
-                      'Summarize the key details',
-                    ].map((q, i) => (
-                      <button
-                        key={i}
-                        className="copilot-suggestion-btn"
-                        onClick={() => {
-                          setQaInput(q);
-                        }}
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            <button
+              className={`tab-btn ${activeTab === 'validation' ? 'active' : ''}`}
+              onClick={() => setActiveTab('validation')}
+            >
+              <ShieldCheck size={16} />
+              <span>Validation Rules</span>
+              {validation && (
+                <span
+                  className={`tab-badge ${
+                    validation.error_count > 0
+                      ? 'badge-alert'
+                      : validation.warning_count > 0
+                      ? 'badge-warn'
+                      : 'badge-count'
+                  }`}
+                >
+                  {validation.error_count > 0 ? `${validation.error_count} Errors` : validation.status}
+                </span>
               )}
+            </button>
 
-              {qaMessages.map((msg, idx) => (
-                <div key={idx} className={`copilot-msg ${msg.role}`}>
-                  {msg.role === 'assistant' && (
-                    <div className="copilot-msg-avatar">
-                      <Bot size={16} />
+            <button
+              className={`tab-btn ${activeTab === 'duplicates' ? 'active' : ''}`}
+              onClick={() => setActiveTab('duplicates')}
+            >
+              <Copy size={16} />
+              <span>Duplicates</span>
+              {duplicates?.has_duplicates && (
+                <span className="tab-badge badge-warn">{duplicates.matches?.length || 0}</span>
+              )}
+            </button>
+
+            <button
+              className={`tab-btn ${activeTab === 'anomaly' ? 'active' : ''}`}
+              onClick={() => setActiveTab('anomaly')}
+            >
+              <AlertTriangle size={16} />
+              <span>Anomaly Detection</span>
+              {anomaly?.is_anomaly && <span className="tab-badge badge-alert">Outlier</span>}
+            </button>
+
+            <button
+              className={`tab-btn ${activeTab === 'content' ? 'active' : ''}`}
+              onClick={() => setActiveTab('content')}
+            >
+              <FileCode size={16} />
+              <span>Raw Text</span>
+            </button>
+          </div>
+
+          {/* TAB 1: AUDIT SUMMARY (SPACIOUS 2-COLUMN EXECUTIVE DASHBOARD) */}
+          {activeTab === 'overview' && (
+            <div className="audit-overview-layout animate-fade-in">
+              {/* Left Column: Briefing & Observations */}
+              <div className="audit-overview-main-col">
+                {/* Executive Briefing Card */}
+                <div className="card audit-card-briefing">
+                  <div className="audit-card-header">
+                    <div className="audit-header-icon-wrap">
+                      <FileCheck size={18} />
+                    </div>
+                    <div>
+                      <h3 className="audit-card-title">Executive Audit Briefing</h3>
+                      <p className="audit-card-subtitle">Automated structural evaluation and counterparty summary</p>
+                    </div>
+                  </div>
+
+                  <p className="audit-narrative-text">
+                    {ai.executive_summary ||
+                      `Document processed and registered as ${analysis.document_type || 'unclassified'}. Structural coordinates and field data are verified against standard accounting conventions.`}
+                  </p>
+
+                  {aiRelationships.length > 0 && (
+                    <div className="audit-roles-strip">
+                      <span className="audit-roles-label">Detected Counterparty Roles:</span>
+                      <div className="audit-roles-tags">
+                        {aiRelationships.map((rel, i) => (
+                          <div key={i} className="audit-role-tag">
+                            <span className="role-entity">{rel.entity}</span>
+                            <ArrowRight size={11} className="role-arrow" />
+                            <span className="role-name">{rel.role}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  <div className={`copilot-msg-bubble ${msg.error ? 'error-bubble' : ''}`}>
-                    {msg.text}
-                    {msg.citations && msg.citations.length > 0 && (
-                      <div className="copilot-citations">
-                        {msg.citations.map((c, ci) => (
-                          <span key={ci} className="copilot-citation">{c}</span>
-                        ))}
+                </div>
+
+                {/* Audit Findings & Observations Card */}
+                <div className="card audit-card-findings">
+                  <div className="audit-card-header">
+                    <div className="audit-header-icon-wrap success">
+                      <ShieldCheck size={18} />
+                    </div>
+                    <div>
+                      <h3 className="audit-card-title">Audit Findings & Observations</h3>
+                      <p className="audit-card-subtitle">Key compliance checkpoints, financial notes, and control recommendations</p>
+                    </div>
+                  </div>
+
+                  <div className="audit-findings-list">
+                    {aiInsights.length > 0 ? (
+                      aiInsights.map((insight, i) => (
+                        <div key={i} className="audit-finding-item">
+                          <div className="finding-bullet-icon">
+                            <CheckCircle2 size={15} />
+                          </div>
+                          <div className="finding-text">{insight}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="audit-finding-item">
+                        <div className="finding-bullet-icon">
+                          <CheckCircle2 size={15} />
+                        </div>
+                        <div className="finding-text">
+                          Document conforms to standard layout conventions with no structural blocking errors.
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
-              ))}
+              </div>
 
-              {qaLoading && (
-                <div className="copilot-msg assistant">
-                  <div className="copilot-msg-avatar">
-                    <Bot size={16} />
+              {/* Right Column: Key Identifiers & Risk Assessment */}
+              <div className="audit-overview-side-col">
+                {/* Core Transaction Identifiers */}
+                <div className="card audit-card-identifiers">
+                  <div className="audit-card-header">
+                    <div className="audit-header-icon-wrap">
+                      <Layers size={18} />
+                    </div>
+                    <div>
+                      <h3 className="audit-card-title">Transaction Identifiers</h3>
+                      <p className="audit-card-subtitle">Primary financial & reference records</p>
+                    </div>
                   </div>
-                  <div className="copilot-msg-bubble typing">
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
+
+                  <div className="audit-kv-list">
+                    <div className="audit-kv-row">
+                      <span className="audit-kv-key">Document Type</span>
+                      <span className="audit-kv-val capitalize font-bold">{analysis.document_type || 'Unclassified'}</span>
+                    </div>
+
+                    <div className="audit-kv-row highlight-row">
+                      <span className="audit-kv-key">Gross Total</span>
+                      <span className="audit-kv-val currency-val">
+                        {totalAmountVal != null ? formatRupees(totalAmountVal) : '—'}
+                      </span>
+                    </div>
+
+                    <div className="audit-kv-row">
+                      <span className="audit-kv-key">Currency</span>
+                      <span className="audit-kv-val mono">{aiEntities.financials?.currency || 'INR (₹)'}</span>
+                    </div>
+
+                    <div className="audit-kv-row">
+                      <span className="audit-kv-key">PO Number</span>
+                      <div className="audit-val-with-copy">
+                        <span className="audit-kv-val mono">{poNoVal || '—'}</span>
+                        {poNoVal && (
+                          <button
+                            className="btn-tiny-copy"
+                            title="Copy PO Number"
+                            onClick={() => {
+                              navigator.clipboard.writeText(poNoVal);
+                              setCopiedFieldName('po');
+                              setTimeout(() => setCopiedFieldName(null), 1500);
+                            }}
+                          >
+                            {copiedFieldName === 'po' ? <Check size={12} /> : <Copy size={12} />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="audit-kv-row">
+                      <span className="audit-kv-key">Invoice Number</span>
+                      <div className="audit-val-with-copy">
+                        <span className="audit-kv-val mono">{invoiceNoVal || '—'}</span>
+                        {invoiceNoVal && (
+                          <button
+                            className="btn-tiny-copy"
+                            title="Copy Invoice Number"
+                            onClick={() => {
+                              navigator.clipboard.writeText(invoiceNoVal);
+                              setCopiedFieldName('inv');
+                              setTimeout(() => setCopiedFieldName(null), 1500);
+                            }}
+                          >
+                            {copiedFieldName === 'inv' ? <Check size={12} /> : <Copy size={12} />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {vendorVal && (
+                      <div className="audit-kv-row">
+                        <span className="audit-kv-key">Vendor / Issuer</span>
+                        <span className="audit-kv-val">{vendorVal}</span>
+                      </div>
+                    )}
+
+                    <div className="audit-kv-row">
+                      <span className="audit-kv-key">Transaction Date</span>
+                      <span className="audit-kv-val">{primaryDateVal || new Date(analysis.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fiscal Risk & Integrity Card */}
+                <div className="card audit-card-risk">
+                  <div className="audit-card-header">
+                    <div className="audit-header-icon-wrap warn">
+                      <AlertTriangle size={18} />
+                    </div>
+                    <div>
+                      <h3 className="audit-card-title">Fiscal Risk & Controls</h3>
+                      <p className="audit-card-subtitle">Automated disbursement controls</p>
+                    </div>
+                  </div>
+
+                  <p className="audit-risk-paragraph">
+                    {ai.risk_narrative || "No elevated financial or structural risks detected for this document."}
+                  </p>
+
+                  <div className="risk-badges-grid">
+                    <div className="risk-badge-item">
+                      <span className="risk-item-label">Outlier Scan:</span>
+                      <StatusBadge
+                        status={analysis.is_anomaly ? 'anomaly' : 'normal'}
+                        label={analysis.is_anomaly ? 'Outlier Flagged' : 'Normal Structure'}
+                      />
+                    </div>
+                    <div className="risk-badge-item">
+                      <span className="risk-item-label">Duplicate Scan:</span>
+                      <StatusBadge
+                        status={analysis.has_duplicates ? 'duplicate' : 'normal'}
+                        label={analysis.has_duplicates ? 'Duplicate Match' : 'Unique Record'}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: EXTRACTION */}
+          {activeTab === 'extraction' && (
+            <div className="extraction-tab card animate-fade-in">
+              <div className="tab-pane-header-with-search">
+                <div>
+                  <h3 className="tab-pane-title">Extracted Key-Value Fields</h3>
+                  <p className="tab-pane-desc">
+                    Normalized deterministic field values extracted from document layout coordinates.
+                  </p>
+                </div>
+                <div className="field-search-box">
+                  <Search size={14} className="field-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Filter fields..."
+                    value={fieldSearch}
+                    onChange={(e) => setFieldSearch(e.target.value)}
+                    className="field-search-input"
+                  />
+                </div>
+              </div>
+
+              {filteredFieldEntries.length === 0 ? (
+                <EmptyState message={fieldSearch ? "No fields match your search query." : "No fields were extracted for this document."} />
+              ) : (
+                <div className="table-responsive">
+                  <table className="spacious-table">
+                    <thead>
+                      <tr>
+                        <th>Field Name</th>
+                        <th>Extracted Value</th>
+                        <th>Confidence</th>
+                        <th>Source</th>
+                        <th style={{ textAlign: 'right', width: '60px' }}>Copy</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredFieldEntries.map(([name, field]) => (
+                        <tr key={name}>
+                          <td className="field-name-cell">{name.replace(/_/g, ' ')}</td>
+                          <td>
+                            <span className="field-value-pill">
+                              {formatFieldValue(name, field?.value)}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="confidence-meter-wide">
+                              <div className="meter-track">
+                                <div
+                                  className="meter-fill-bar"
+                                  style={{
+                                    width: `${(field?.confidence || 0) * 100}%`,
+                                    background:
+                                      (field?.confidence || 0) > 0.8
+                                        ? 'var(--color-success)'
+                                        : 'var(--color-warning)',
+                                  }}
+                                />
+                              </div>
+                              <span className="meter-val-text">
+                                {((field?.confidence || 0) * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="meta-source-tag">{field?.source || 'heuristic'}</span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              className="btn-ghost field-copy-btn"
+                              onClick={() => handleCopyFieldValue(name, field?.value)}
+                              title="Copy value"
+                            >
+                              {copiedFieldName === name ? (
+                                <Check size={13} style={{ color: 'var(--color-success)' }} />
+                              ) : (
+                                <Clipboard size={13} />
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: LINE ITEMS */}
+          {activeTab === 'line-items' && (
+            <div className="line-items-tab card animate-fade-in">
+              <div className="tab-pane-header">
+                <h3 className="tab-pane-title">Invoice Itemization & Breakdown</h3>
+                <p className="tab-pane-desc">Structured line item breakdown with quantities and unit prices.</p>
+              </div>
+
+              {aiLineItems.length === 0 ? (
+                <EmptyState message="No itemized rows extracted." />
+              ) : (
+                <div className="table-responsive">
+                  <table className="spacious-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '40px' }}>#</th>
+                        <th>Item Description</th>
+                        <th style={{ textAlign: 'right' }}>Quantity</th>
+                        <th style={{ textAlign: 'right' }}>Unit Price (₹)</th>
+                        <th style={{ textAlign: 'right' }}>Total (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aiLineItems.map((item, idx) => (
+                        <tr key={idx}>
+                          <td style={{ color: 'var(--text-muted)' }}>{idx + 1}</td>
+                          <td style={{ fontWeight: 600 }}>{item.description || '—'}</td>
+                          <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                            {item.quantity ?? '—'}
+                          </td>
+                          <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                            {item.unit_price != null ? formatRupees(item.unit_price) : '—'}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, fontFamily: 'monospace' }}>
+                            {item.amount != null ? formatRupees(item.amount) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: FINANCIAL RECONCILER */}
+          {activeTab === 'finance' && (
+            <div className="finance-tab animate-fade-in">
+              <div className="card finance-container-card">
+                <div className="tab-pane-header">
+                  <h3 className="tab-pane-title">Arithmetic Reconciliation</h3>
+                  <p className="tab-pane-desc">
+                    Mathematical validation verifying whether subtotal, taxes, and stated total reconcile properly.
+                  </p>
+                </div>
+
+                <div className="finance-sheet">
+                  <div className="finance-line">
+                    <span className="f-label">Stated Subtotal</span>
+                    <span className="f-val mono">{formatRupees(aiFinValidation.subtotal)}</span>
+                  </div>
+                  <div className="finance-line">
+                    <span className="f-label">+ Stated Tax / Fees</span>
+                    <span className="f-val mono">{formatRupees(aiFinValidation.tax)}</span>
+                  </div>
+                  <div className="finance-line">
+                    <span className="f-label">− Applied Discount</span>
+                    <span className="f-val mono">{formatRupees(aiFinValidation.discount)}</span>
+                  </div>
+                  <div className="f-divider" />
+                  <div className="finance-line total-highlight">
+                    <span className="f-label">Computed Mathematical Total</span>
+                    <span className="f-val mono">{formatRupees(aiFinValidation.computed_total)}</span>
+                  </div>
+                  <div className="finance-line total-highlight">
+                    <span className="f-label">Stated Document Total</span>
+                    <span className="f-val mono">{formatRupees(aiFinValidation.stated_total)}</span>
+                  </div>
+                  <div className="f-divider" />
+                  <div className="finance-line verdict-line">
+                    <span className="f-label">Reconciliation Verdict</span>
+                    <div>
+                      {aiFinValidation.is_valid === true && (
+                        <span className="verdict-tag pass">
+                          <CheckCircle2 size={16} /> Balanced — No Discrepancy
+                        </span>
+                      )}
+                      {aiFinValidation.is_valid === false && (
+                        <span className="verdict-tag fail">
+                          <AlertCircle size={16} /> Discrepancy: {formatRupees(aiFinValidation.discrepancy)}
+                        </span>
+                      )}
+                      {aiFinValidation.is_valid == null && (
+                        <span className="verdict-tag unknown">Insufficient numeric data</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {aiFinValidation.notes && (
+                  <div className="finance-notes-callout">
+                    <strong>Audit Note:</strong> {aiFinValidation.notes}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: VALIDATION RULES */}
+          {activeTab === 'validation' && (
+            <div className="validation-tab animate-fade-in">
+              <div className="explainer-card">
+                <div className="explainer-icon">
+                  <Info size={18} />
+                </div>
+                <div className="explainer-content">
+                  <div className="explainer-title">What is Deterministic Validation?</div>
+                  <p className="explainer-text">
+                    DocuMind evaluates your document against 6 deterministic business rules: checking that required fields are present, verifying arithmetic sums (subtotal + tax = total), confirming logical date order (due date after invoice date), ensuring non-negative amounts, and checking for duplicate invoice identifiers.
+                  </p>
+                </div>
+              </div>
+
+              {aiValidationSummary && (
+                <div className="ai-narrative-box">
+                  <div className="ai-narrative-icon">
+                    <Sparkles size={14} />
+                  </div>
+                  <div className="ai-narrative-content">
+                    <div className="ai-narrative-label">AI Validation Narrative</div>
+                    <p className="ai-narrative-text">{aiValidationSummary}</p>
                   </div>
                 </div>
               )}
 
-              <div ref={qaEndRef} />
-            </div>
+              {!validation || !validation.results || validation.results.length === 0 ? (
+                <div className="card">
+                  <EmptyState message="No validation rules executed for this document." />
+                </div>
+              ) : (
+                <div className="rules-grid">
+                  {validation.results.map((rule, idx) => {
+                    const isPass = rule.status === 'PASS';
+                    const isFail = rule.status === 'FAIL';
+                    const isWarn = rule.status === 'WARN';
 
-            <div className="copilot-input-row">
-              <input
-                type="text"
-                className="copilot-input"
-                placeholder="Ask a question about this document..."
-                value={qaInput}
-                onChange={e => setQaInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAskQuestion()}
-                disabled={qaLoading}
-              />
-              <button
-                className="btn btn-accent copilot-send-btn"
-                onClick={handleAskQuestion}
-                disabled={qaLoading || !qaInput.trim()}
-              >
-                <Send size={16} />
-              </button>
+                    return (
+                      <div key={idx} className={`rule-card card ${isPass ? 'pass' : isFail ? 'fail' : 'warn'}`}>
+                        <div className="rule-card-top">
+                          <div className="rule-title-group">
+                            {isPass && <CheckCircle2 size={20} style={{ color: 'var(--color-success)' }} />}
+                            {isFail && <AlertCircle size={20} style={{ color: 'var(--color-error)' }} />}
+                            {isWarn && <AlertTriangle size={20} style={{ color: 'var(--color-warning)' }} />}
+                            <span className="rule-name-text">{rule.rule_name}</span>
+                          </div>
+                          <StatusBadge
+                            status={isPass ? 'valid' : isFail ? 'invalid' : 'warning'}
+                            label={rule.status}
+                          />
+                        </div>
+                        <p className="rule-message-text">{rule.message}</p>
+                        {rule.details && Object.keys(rule.details).length > 0 && (
+                          <div className="rule-details-raw">
+                            {JSON.stringify(rule.details)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Tab: Content */}
-      {activeTab === 'content' && (
-        <div className="content-tab animate-fade-in">
-          <div className="card">
-            <div className="content-header">
-              <h3 className="overview-section-title" style={{ margin: 0 }}>
-                <FileCode size={18} style={{ color: 'var(--accent-primary)' }} />
-                Cleaned OCR Text
-              </h3>
-              <button
-                className="btn btn-secondary"
-                style={{ padding: '6px 12px', fontSize: 'var(--font-size-xs)' }}
-                onClick={() => handleCopyText(content?.cleaned_text || content?.raw_text)}
-              >
-                {copied ? <Check size={14} /> : <Clipboard size={14} />}
-                {copied ? 'Copied' : 'Copy Text'}
-              </button>
-            </div>
+          {/* TAB 6: DUPLICATES */}
+          {activeTab === 'duplicates' && (
+            <div className="duplicates-tab animate-fade-in">
+              <div className="explainer-card">
+                <div className="explainer-icon">
+                  <Info size={18} />
+                </div>
+                <div className="explainer-content">
+                  <div className="explainer-title">What is Duplicate Detection?</div>
+                  <p className="explainer-text">
+                    DocuMind uses TF-IDF cosine similarity and SHA-256 content hashing to compare your document against all existing records in the repository. Exact matches indicate identical resubmissions, while near matches (85-99%) flag revised versions, duplicates with minor edits, or potential double-billing.
+                  </p>
+                </div>
+              </div>
 
-            <div className="text-viewer">
-              {content?.cleaned_text || content?.raw_text || 'No extracted text found for this document.'}
+              {aiDuplicateAssessment && (
+                <div className="ai-narrative-box">
+                  <div className="ai-narrative-icon">
+                    <Sparkles size={14} />
+                  </div>
+                  <div className="ai-narrative-content">
+                    <div className="ai-narrative-label">AI Duplicate Assessment</div>
+                    <p className="ai-narrative-text">{aiDuplicateAssessment}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="card">
+                <h3 className="tab-pane-title">Vector Similarity Results</h3>
+                <p className="tab-pane-desc">
+                  Repository scan comparing content vectors against all historical records of the same class.
+                </p>
+
+                {!duplicates || !duplicates.matches || duplicates.matches.length === 0 ? (
+                  <EmptyState message="No duplicate matches found. This document is completely unique." />
+                ) : (
+                  <div className="duplicates-list">
+                    {duplicates.matches.map((match, idx) => (
+                      <div key={idx} className="duplicate-match-card card">
+                        <div className="dup-header">
+                          <div className="dup-info">
+                            <Copy size={20} className="dup-icon" />
+                            <div>
+                              <strong className="dup-doc-id">Matched: {match.matched_document_id}</strong>
+                              <span className="dup-type-tag">{match.duplicate_type}</span>
+                            </div>
+                          </div>
+                          <button
+                            className="btn btn-secondary btn-xs"
+                            onClick={() => navigate(`/documents/${match.matched_document_id}`)}
+                          >
+                            <span>Inspect Document</span>
+                            <ExternalLink size={12} />
+                          </button>
+                        </div>
+                        <div className="dup-similarity-strip">
+                          <span>Similarity Score:</span>
+                          <strong className="dup-score-val">
+                            {(match.similarity_score * 100).toFixed(2)}%
+                          </strong>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+
+          {/* TAB 7: ANOMALY DETECTION */}
+          {activeTab === 'anomaly' && (
+            <div className="anomaly-tab animate-fade-in">
+              <div className="explainer-card">
+                <div className="explainer-icon">
+                  <Info size={18} />
+                </div>
+                <div className="explainer-content">
+                  <div className="explainer-title">What is Anomaly Detection?</div>
+                  <p className="explainer-text">
+                    DocuMind uses an Isolation Forest machine learning model to evaluate numerical features (file size, text length, financial amounts, field counts). Documents differing significantly from normal historical clusters are flagged as outliers for human review.
+                  </p>
+                </div>
+              </div>
+
+              {aiAnomalyAssessment && (
+                <div className="ai-narrative-box">
+                  <div className="ai-narrative-icon">
+                    <Sparkles size={14} />
+                  </div>
+                  <div className="ai-narrative-content">
+                    <div className="ai-narrative-label">AI Anomaly Assessment</div>
+                    <p className="ai-narrative-text">{aiAnomalyAssessment}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="anomaly-stats-grid">
+                <div className="card anomaly-stat-box">
+                  <span className="stat-label">Model Classification</span>
+                  <div className="stat-val-row">
+                    <StatusBadge
+                      status={anomaly?.is_anomaly ? 'anomaly' : 'normal'}
+                      label={anomaly?.is_anomaly ? 'Outlier Flagged' : 'Normal Cluster'}
+                    />
+                  </div>
+                </div>
+
+                <div className="card anomaly-stat-box">
+                  <span className="stat-label">Anomaly Score</span>
+                  <div className="stat-number">{anomaly?.anomaly_score != null ? anomaly.anomaly_score : '—'}</div>
+                </div>
+
+                <div className="card anomaly-stat-box">
+                  <span className="stat-label">Decision Function</span>
+                  <div className="stat-number">{anomaly?.decision_function_score != null ? anomaly.decision_function_score : '—'}</div>
+                </div>
+              </div>
+
+              {/* Feature vectors table */}
+              {anomaly?.features && Object.keys(anomaly.features).length > 0 && (
+                <div className="card feature-vectors-card">
+                  <h4 className="tab-pane-title" style={{ fontSize: '15px' }}>
+                    Evaluated Feature Vectors
+                  </h4>
+                  <div className="table-responsive">
+                    <table className="spacious-table">
+                      <thead>
+                        <tr>
+                          <th>Vector Feature</th>
+                          <th>Numeric Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(anomaly.features).map(([fKey, fVal]) => (
+                          <tr key={fKey}>
+                            <td className="field-name-cell">{fKey.replace(/_/g, ' ')}</td>
+                            <td>
+                              <span className="field-value-pill mono">
+                                {typeof fVal === 'number' ? fVal.toLocaleString() : String(fVal)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 8: RAW TEXT */}
+          {activeTab === 'content' && (
+            <div className="content-tab animate-fade-in">
+              <div className="card">
+                <div className="tab-pane-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 className="tab-pane-title">Cleaned OCR Output</h3>
+                    <p className="tab-pane-desc">Full textual content extracted by the Tesseract normalization pipeline.</p>
+                  </div>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleCopyText(content?.cleaned_text || content?.raw_text)}
+                  >
+                    {copied ? <Check size={14} /> : <Clipboard size={14} />}
+                    <span>{copied ? 'Copied' : 'Copy Text'}</span>
+                  </button>
+                </div>
+                <div className="ocr-text-viewer">
+                  {content?.cleaned_text || content?.raw_text || 'No extracted text found for this document.'}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -17,6 +17,7 @@ import {
   Building2,
   FileSpreadsheet,
   Zap,
+  Calculator,
 } from 'lucide-react';
 import './HomePage.css';
 
@@ -92,6 +93,94 @@ export default function HomePage() {
     { value: '99.4%', label: 'Classifier Accuracy', sub: 'Trained model baseline' },
     { value: '6/6', label: 'Math Compliance Rules', sub: 'Automated reconciliation' },
     { value: '< 1.2s', label: 'Processing Speed', sub: 'Average ingestion latency' },
+  ];
+
+  const intelligenceModules = [
+    {
+      icon: Layers,
+      title: 'Semantic Field Extraction',
+      badge: 'Data Extraction',
+      tagline: 'What is extracted from your document:',
+      items: [
+        { label: 'Counterparty Entities', desc: 'Vendor & customer names, physical addresses, contact info, and tax registrations (GSTIN/PAN/VAT).' },
+        { label: 'Commercial References', desc: 'Invoice numbers, Purchase Order (PO) numbers, Challan references, and policy IDs.' },
+        { label: 'Audit Chronology', desc: 'Document issue dates, payment due dates, delivery dates, and billing periods.' },
+        { label: 'Line-Item Breakdown', desc: 'Full itemized SKU descriptions, quantities, unit rates, and row extended amounts.' },
+        { label: 'Financial Liabilities', desc: 'Subtotal, applied tax amounts, discounts, and gross liability in Indian Rupees (₹).' },
+      ],
+      benefit: 'Eliminates 100% of manual data entry and feeds structured JSON directly into your ERP.',
+      link: '/documents',
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Deterministic Rule Validation',
+      badge: 'Compliance & Quality',
+      tagline: 'What is checked and enforced:',
+      items: [
+        { label: 'Mandatory Field Integrity', desc: 'Flags missing invoice numbers, unstated vendor names, or missing totals.' },
+        { label: 'Format & Type Schema', desc: 'Verifies alphanumeric invoice structures, valid GST formats, and parseable dates.' },
+        { label: 'Timeline Sequence Logic', desc: 'Verifies that issue date chronologically precedes due date and delivery date.' },
+        { label: 'Boundary & Sign Audit', desc: 'Enforces positive monetary amounts and non-zero quantities where mandated.' },
+      ],
+      benefit: 'Guarantees 100% data completeness and statutory conformity before ledger posting.',
+      link: '/documents',
+    },
+    {
+      icon: Calculator,
+      title: 'Mathematical Consistency Audit',
+      badge: 'Arithmetic Verification',
+      tagline: 'What mathematical checks run:',
+      items: [
+        { label: 'Gross Reconciliation', desc: 'Recalculates: Subtotal + Tax Amount - Applied Discounts = Stated Gross Total.' },
+        { label: 'Line-Item Multiplication', desc: 'Audits every row: Quantity × Unit Price = Stated Extended Line Amount.' },
+        { label: 'Tax Rate Consistency', desc: 'Verifies statutory GST/sales tax percentage application against item totals.' },
+        { label: 'Discrepancy Reporting', desc: 'Pinpoints the exact discrepancy figure down to the paisa (₹).' },
+      ],
+      benefit: 'Catches hidden calculation errors, billing inflation, and rounding discrepancies instantly.',
+      link: '/documents',
+    },
+    {
+      icon: Copy,
+      title: 'Dual-Tier Duplicate Detection',
+      badge: 'Fraud Prevention',
+      tagline: 'What duplicate vectors are checked:',
+      items: [
+        { label: 'SHA-256 Exact Hash', desc: 'Catches 100% identical files submitted under renamed or altered filenames.' },
+        { label: 'TF-IDF Cosine Similarity', desc: 'Surfaces near-duplicates (similarity ≥ 85%) with minor date or line-item edits.' },
+        { label: 'Vendor + Number Collision', desc: 'Alerts immediately when a duplicate invoice number is submitted by the same vendor.' },
+        { label: 'Side-by-Side Comparison', desc: 'Provides match confidence %, previous upload dates, and original file references.' },
+      ],
+      benefit: 'Completely eliminates duplicate vendor disbursements and accidental double payments.',
+      link: '/duplicates',
+    },
+    {
+      icon: AlertTriangle,
+      title: 'Statistical Anomaly & Outlier Scoring',
+      badge: 'Risk Intelligence',
+      tagline: 'What outlier indicators are flagged:',
+      items: [
+        { label: 'Isolation Forest Model', desc: 'Multidimensional unsupervised ML model scores spend behavior against history.' },
+        { label: 'Outsized Transaction Alerting', desc: 'Flags invoices with totals that abnormally exceed historical vendor averages.' },
+        { label: 'Atypical Billing Patterns', desc: 'Identifies off-cycle submissions or unexpected spikes in billing frequency.' },
+        { label: 'Automated Risk Verdict', desc: 'Labels files as "Normal Record" vs. "Outlier Flagged / Review Recommended".' },
+      ],
+      benefit: 'Alerts controllers to anomalous spend and rogue transactions before funds are wired.',
+      link: '/anomalies',
+    },
+    {
+      icon: Sparkles,
+      title: 'Executive Audit Findings & Narrative',
+      badge: 'Executive Intelligence',
+      tagline: 'What insights are delivered:',
+      items: [
+        { label: 'Executive Audit Briefing', desc: 'Concise corporate narrative detailing transaction nature, counterparty, and amounts.' },
+        { label: '3-Way Match Verification', desc: 'Actionable advisory cross-referencing invoice claims with PO and Delivery Challan.' },
+        { label: 'Tax & Compliance Notes', desc: 'Verifies vendor tax deduction, withholding status, and statutory GST notes.' },
+        { label: 'Disbursement Advisory', desc: 'Clear, prioritized recommendations for accounts payable controllers.' },
+      ],
+      benefit: 'Empowers finance leaders with instantaneous visibility without reading dense invoices.',
+      link: '/dashboard',
+    },
   ];
 
   return (
@@ -307,6 +396,61 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Comprehensive Intelligence & Verification Breakdown Section */}
+      <section className="intelligence-breakdown-section">
+        <div className="section-header">
+          <div className="section-eyebrow">Document Intelligence Architecture</div>
+          <h2 className="section-title">What DocuMind Analyzes, Verifies & Extracts</h2>
+          <p className="section-desc">
+            Explore how every incoming business document undergoes rigorous entity extraction,
+            mathematical reconciliation, duplicate checking, and anomaly scoring.
+          </p>
+        </div>
+
+        <div className="intelligence-modules-grid">
+          {intelligenceModules.map((mod, idx) => {
+            const ModIcon = mod.icon;
+            return (
+              <div key={idx} className="intelligence-module-card">
+                <div className="module-card-header">
+                  <div className="module-icon-wrap">
+                    <ModIcon size={22} />
+                  </div>
+                  <div className="module-header-meta">
+                    <span className="module-badge">{mod.badge}</span>
+                    <h3 className="module-title">{mod.title}</h3>
+                  </div>
+                </div>
+
+                <p className="module-tagline">{mod.tagline}</p>
+
+                <ul className="module-items-list">
+                  {mod.items.map((item, itemIdx) => (
+                    <li key={itemIdx} className="module-item">
+                      <span className="item-bullet">▸</span>
+                      <div>
+                        <strong className="item-label">{item.label}:</strong>{' '}
+                        <span className="item-desc">{item.desc}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="module-card-footer">
+                  <div className="module-benefit">
+                    <span className="benefit-label">Enterprise Value:</span> {mod.benefit}
+                  </div>
+                  <button className="module-nav-link" onClick={() => navigate(mod.link)}>
+                    <span>Inspect Pipeline</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
