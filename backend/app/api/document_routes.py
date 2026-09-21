@@ -279,6 +279,8 @@ def get_processing_service(
         )
     )
 
+    ai_analysis_service = get_ai_service()
+
     return DocumentProcessingService(
         repository=repository,
         pipeline=pipeline,
@@ -300,6 +302,9 @@ def get_processing_service(
         anomaly_service=(
             anomaly_service
         ),
+        ai_analysis_service=(
+            ai_analysis_service
+        ),
     )
 
 @router.post(
@@ -309,6 +314,7 @@ def get_processing_service(
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    auto_process: bool = Query(default=False),
     service: DocumentService = Depends(
         get_document_service
     ),
@@ -337,10 +343,11 @@ async def upload_document(
             detail=str(exc)
         )
 
-    background_tasks.add_task(
-        processing_service.process_document,
-        document.document_id
-    )
+    if auto_process:
+        background_tasks.add_task(
+            processing_service.process_document,
+            document.document_id
+        )
 
     return {
         "message": "Document uploaded successfully",
@@ -364,7 +371,7 @@ async def get_documents(
     page_size: int = Query(
         default=20,
         ge=1,
-        le=100
+        le=500
     ),
     service: DocumentService = Depends(
         get_document_service
@@ -492,6 +499,39 @@ async def delete_document(
         "message": "Document deleted successfully",
         "document_id": document_id
     }
+
+
+@router.post(
+    "/{document_id}/process",
+    response_model=DocumentResponse
+)
+async def process_document_endpoint(
+    document_id: str,
+    background_tasks: BackgroundTasks,
+    service: DocumentService = Depends(
+        get_document_service
+    ),
+    processing_service: DocumentProcessingService = Depends(
+        get_processing_service
+    ),
+):
+    """Trigger processing and analysis for an uploaded document."""
+    document = service.get_document(
+        document_id
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found"
+        )
+
+    background_tasks.add_task(
+        processing_service.process_document,
+        document_id
+    )
+
+    return document
 
 
 @router.get(

@@ -143,6 +143,10 @@ class AIAnalysisResponse(BaseModel):
     line_items: list[dict] = []
     financial_validation: dict = {}
     risk_narrative: str = ""
+    insights: list[str] = []
+    validation_summary: str = ""
+    duplicate_assessment: str = ""
+    anomaly_assessment: str = ""
     analysis_method: str = "none"
     analyzed_at: str | None = None
 
