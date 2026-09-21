@@ -149,6 +149,20 @@ export async function askDocumentQuestion(documentId, question) {
   });
 }
 
+export async function askMultiDocumentQuestion(question, documentIds = null) {
+  return request(`${API_BASE_URL}/qa`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question, document_ids: documentIds }),
+  });
+}
+
+export async function reindexDocumentRAG(documentId) {
+  return request(`${API_BASE_URL}/${documentId}/reindex`, {
+    method: 'POST',
+  });
+}
+
 export async function reanalyzeDocument(documentId, apiKey = null) {
   return request(`${API_BASE_URL}/${documentId}/reanalyze`, {
     method: 'POST',

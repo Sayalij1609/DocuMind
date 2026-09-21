@@ -16,6 +16,13 @@
   margin-bottom: var(--space-4);
 }
 
+.qa-doc-selector-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
 .qa-doc-label {
   display: flex;
   align-items: center;
@@ -23,7 +30,14 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: var(--space-2);
+}
+
+.qa-reindex-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .qa-doc-select {
@@ -49,6 +63,16 @@
   gap: var(--space-2);
   margin-top: var(--space-2);
   flex-wrap: wrap;
+}
+
+.meta-repo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-primary);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  font-weight: 500;
 }
 
 /* Chat Card */
@@ -165,6 +189,90 @@
   background: rgba(239, 68, 68, 0.05);
 }
 
+.qa-msg-text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+/* RAG Evidence Sources Container */
+.qa-sources-container {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qa-sources-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.qa-sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qa-source-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 12px;
+  transition: all var(--transition-fast);
+}
+
+.qa-source-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.qa-source-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.qa-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.qa-source-score {
+  font-size: 10px;
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.qa-source-snippet {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .qa-citations {
   margin-top: 8px;
   display: flex;
@@ -178,6 +286,15 @@
   color: var(--accent-primary);
   padding: 2px 8px;
   border-radius: var(--radius-sm);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .qa-msg-bubble.typing {

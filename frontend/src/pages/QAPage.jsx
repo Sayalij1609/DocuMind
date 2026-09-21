@@ -7,10 +7,15 @@ import {
   Key,
   X,
   RefreshCw,
+  Layers,
+  Database,
+  Search,
 } from 'lucide-react';
 import {
   getDocuments,
   askDocumentQuestion,
+  askMultiDocumentQuestion,
+  reindexDocumentRAG,
   getAIStatus,
   updateAIConfig,
 } from '../services/api';
@@ -18,10 +23,11 @@ import './QAPage.css';
 
 export default function QAPage() {
   const [documents, setDocuments] = useState([]);
-  const [selectedDocId, setSelectedDocId] = useState('');
+  const [selectedDocId, setSelectedDocId] = useState('__all__');
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [reindexing, setReindexing] = useState(false);
   const [aiStatus, setAiStatus] = useState(null);
   const [showKeyDialog, setShowKeyDialog] = useState(false);
   const [keyInput, setKeyInput] = useState('');
@@ -52,7 +58,7 @@ export default function QAPage() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || !selectedDocId || loading) return;
+    if (!input.trim() || loading) return;
 
     const question = input.trim();
     setInput('');
@@ -60,21 +66,50 @@ export default function QAPage() {
     setLoading(true);
 
     try {
-      const result = await askDocumentQuestion(selectedDocId, question);
+      let result;
+      if (!selectedDocId || selectedDocId === '__all__') {
+        result = await askMultiDocumentQuestion(question);
+      } else {
+        result = await askDocumentQuestion(selectedDocId, question);
+      }
+
       setMessages(prev => [...prev, {
         role: 'assistant',
         text: result.answer,
+        sources: result.sources || [],
         citations: result.citations || [],
         method: result.method,
       }]);
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        text: 'Failed to get a response. Please check your AI configuration and try again.',
+        text: 'Failed to retrieve an answer. Please verify document status and try again.',
         error: true,
       }]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReindex = async () => {
+    if (!selectedDocId || selectedDocId === '__all__' || reindexing) return;
+    setReindexing(true);
+    try {
+      const res = await reindexDocumentRAG(selectedDocId);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: `Vector index updated: successfully re-indexed ${res.indexed_chunks} page chunks for ${res.filename}.`,
+        sources: [],
+        citations: [],
+      }]);
+    } catch {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: 'Failed to re-index document.',
+        error: true,
+      }]);
+    } finally {
+      setReindexing(false);
     }
   };
 
@@ -147,10 +182,24 @@ export default function QAPage() {
 
       {/* Document Selector */}
       <div className="qa-doc-selector card">
-        <label className="qa-doc-label">
-          <FileText size={16} />
-          Select Document
-        </label>
+        <div className="qa-doc-selector-top">
+          <label className="qa-doc-label">
+            <Database size={16} />
+            Target Knowledge Base
+          </label>
+          {selectedDoc && (
+            <button
+              className="btn btn-secondary btn-sm qa-reindex-btn"
+              onClick={handleReindex}
+              disabled={reindexing}
+              title="Re-chunk and update vector embeddings for this document"
+            >
+              <RefreshCw size={13} className={reindexing ? 'spin' : ''} />
+              {reindexing ? 'Indexing Chunks...' : 'Re-index for RAG'}
+            </button>
+          )}
+        </div>
+
         <select
           className="qa-doc-select"
           value={selectedDocId}
@@ -159,20 +208,32 @@ export default function QAPage() {
             setMessages([]);
           }}
         >
-          <option value="">— Choose a document —</option>
-          {documents
-            .filter(d => d.status === 'completed')
-            .map(doc => (
-            <option key={doc.document_id} value={doc.document_id}>
-              {doc.filename} ({doc.document_type || 'unclassified'})
-            </option>
-          ))}
+          <option value="__all__">🌐 All Documents (Repository-Wide Search)</option>
+          <optgroup label="Single Documents">
+            {documents
+              .filter(d => d.status === 'completed')
+              .map(doc => (
+                <option key={doc.document_id} value={doc.document_id}>
+                  📄 {doc.filename} ({doc.document_type || 'unclassified'})
+                </option>
+              ))}
+          </optgroup>
         </select>
-        {selectedDoc && (
+
+        {selectedDoc ? (
           <div className="qa-doc-info">
             <span className="meta-pill">{selectedDoc.file_type}</span>
-            <span className="meta-pill" style={{ textTransform: 'capitalize' }}>{selectedDoc.document_type || 'Unknown'}</span>
+            <span className="meta-pill" style={{ textTransform: 'capitalize' }}>
+              {selectedDoc.document_type || 'Unknown'}
+            </span>
             <span className="meta-pill">{(selectedDoc.file_size / 1024).toFixed(1)} KB</span>
+          </div>
+        ) : (
+          <div className="qa-doc-info">
+            <span className="meta-pill meta-repo">
+              <Search size={12} />
+              Cross-Document Retrieval Active ({documents.filter(d => d.status === 'completed').length} completed documents)
+            </span>
           </div>
         )}
       </div>
@@ -183,29 +244,31 @@ export default function QAPage() {
           {messages.length === 0 && (
             <div className="qa-chat-welcome">
               <Bot size={36} className="qa-welcome-icon" />
-              <h3>DocuMind AI Assistant</h3>
-              <p>Select a document above and ask any question about it.</p>
+              <h3>Nexora RAG Assistant</h3>
+              <p>
+                {selectedDocId === '__all__'
+                  ? 'Ask questions across your entire document repository with grounded citations.'
+                  : `Ask grounded questions about ${selectedDoc?.filename || 'this document'}.`}
+              </p>
 
-              {selectedDocId && (
-                <div className="qa-chat-suggestions">
-                  {[
-                    'What is the total amount?',
-                    'Who issued this document?',
-                    'What are the key dates?',
-                    'Summarize this document',
-                    'List all line items',
-                    'What is the tax breakdown?',
-                  ].map((q, i) => (
-                    <button
-                      key={i}
-                      className="qa-suggestion-btn"
-                      onClick={() => setInput(q)}
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="qa-chat-suggestions">
+                {[
+                  'What is the invoice total?',
+                  'Who issued this document?',
+                  'What are the key dates?',
+                  'Summarize this document',
+                  'List all line items',
+                  'What is the tax amount?',
+                ].map((q, i) => (
+                  <button
+                    key={i}
+                    className="qa-suggestion-btn"
+                    onClick={() => setInput(q)}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -217,8 +280,40 @@ export default function QAPage() {
                 </div>
               )}
               <div className={`qa-msg-bubble ${msg.error ? 'error-bubble' : ''}`}>
-                {msg.text}
-                {msg.citations && msg.citations.length > 0 && (
+                <div className="qa-msg-text">{msg.text}</div>
+
+                {/* Structured RAG Evidence Sources */}
+                {msg.sources && msg.sources.length > 0 && (
+                  <div className="qa-sources-container">
+                    <div className="qa-sources-title">
+                      <Layers size={13} />
+                      <span>Retrieved Evidence ({msg.sources.length} {msg.sources.length === 1 ? 'source' : 'sources'})</span>
+                    </div>
+                    <div className="qa-sources-list">
+                      {msg.sources.map((src, sIdx) => (
+                        <div key={sIdx} className="qa-source-card">
+                          <div className="qa-source-header">
+                            <span className="qa-source-badge">
+                              <FileText size={12} />
+                              {src.filename} — Page {src.page_number}
+                            </span>
+                            {src.similarity_score > 0 && (
+                              <span className="qa-source-score">
+                                {(src.similarity_score * 100).toFixed(0)}% match
+                              </span>
+                            )}
+                          </div>
+                          {src.snippet && (
+                            <p className="qa-source-snippet">"{src.snippet}"</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Citations Pills fallback */}
+                {(!msg.sources || msg.sources.length === 0) && msg.citations && msg.citations.length > 0 && (
                   <div className="qa-citations">
                     {msg.citations.map((c, ci) => (
                       <span key={ci} className="qa-citation-tag">{c}</span>
@@ -249,16 +344,20 @@ export default function QAPage() {
           <input
             type="text"
             className="qa-input"
-            placeholder={selectedDocId ? 'Ask a question about this document...' : 'Select a document first...'}
+            placeholder={
+              selectedDocId === '__all__'
+                ? 'Ask a question across all uploaded documents...'
+                : `Ask a question about ${selectedDoc?.filename || 'this document'}...`
+            }
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
-            disabled={!selectedDocId || loading}
+            disabled={loading}
           />
           <button
             className="btn btn-accent qa-send-btn"
             onClick={handleSend}
-            disabled={!selectedDocId || !input.trim() || loading}
+            disabled={!input.trim() || loading}
           >
             <Send size={16} />
           </button>
