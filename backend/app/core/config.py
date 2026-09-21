@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +32,10 @@ class Settings(BaseSettings):
     )
     anomaly_contamination: float = 0.05
     anomaly_min_training_samples: int = 10
+
+    # Groq AI Analysis (Semantic Intelligence)
+    groq_api_key: Optional[str] = None
+    groq_model: str = "llama-3.3-70b-versatile"
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -75,6 +75,10 @@ class ExtractionResultRepository:
                 if isinstance(raw_val, str):
                     cleaned = (
                         raw_val.replace("$", "")
+                        .replace("₹", "")
+                        .replace("Rs.", "")
+                        .replace("Rs", "")
+                        .replace("INR", "")
                         .replace("€", "")
                         .replace("£", "")
                         .replace(",", "")

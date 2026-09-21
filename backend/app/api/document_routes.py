@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import (
     APIRouter,
     BackgroundTasks,
+    Body,
     Depends,
     File,
     HTTPException,
@@ -109,7 +110,12 @@ from app.services.anomaly_result_repository import (
 )
 
 from app.schemas.extraction import (
+    AIAnalysisResponse,
+    AIConfigRequest,
+    AIStatusResponse,
     DocumentAnalysisResponse,
+    DocumentQARequest,
+    DocumentQAResponse,
     ExtractionResultResponse,
     FieldResultResponse,
     LayoutLMAnalysisResponse,
@@ -127,6 +133,12 @@ from app.processing.text_cleaner import (
 
 from app.processing.pipeline import (
     DocumentProcessingPipeline
+)
+
+from app.services.ai_analysis_service import (
+    get_ai_service,
+    get_runtime_api_key,
+    set_runtime_api_key,
 )
 
 
@@ -377,6 +389,59 @@ async def get_documents(
         "page_size": page_size
     }
 
+
+# ==========================================
+# AI Config (must be before /{document_id})
+# ==========================================
+
+
+@router.get(
+    "/ai/status",
+    response_model=AIStatusResponse,
+)
+async def get_ai_status():
+    """Check if Groq AI is configured."""
+
+    runtime_key = get_runtime_api_key()
+    env_key = settings.groq_api_key
+
+    if runtime_key:
+        return AIStatusResponse(
+            configured=True,
+            model=settings.groq_model,
+            source="runtime",
+        )
+    elif env_key:
+        return AIStatusResponse(
+            configured=True,
+            model=settings.groq_model,
+            source="environment",
+        )
+    else:
+        return AIStatusResponse(
+            configured=False,
+            model=settings.groq_model,
+            source="none",
+        )
+
+
+@router.post(
+    "/ai/config",
+    response_model=AIStatusResponse,
+)
+async def update_ai_config(
+    body: AIConfigRequest,
+):
+    """Save or update Groq API key at runtime."""
+
+    set_runtime_api_key(body.api_key)
+
+    return AIStatusResponse(
+        configured=True,
+        model=settings.groq_model,
+        source="runtime",
+    )
+
 @router.get(
     "/{document_id}",
     response_model=DocumentResponse
@@ -591,6 +656,10 @@ async def get_document_analysis(
         else None
     )
 
+    # AI Semantic Analysis
+    repo = DocumentRepository(db)
+    ai_analysis = repo.get_ai_analysis(document_id)
+
     return DocumentAnalysisResponse(
         document_id=document.document_id,
         filename=document.filename,
@@ -611,6 +680,7 @@ async def get_document_analysis(
         duplicate_count=dup_count,
         is_anomaly=is_anom,
         anomaly_score=anom_score,
+        ai_analysis=ai_analysis,
     )
 
 
@@ -1090,3 +1160,121 @@ async def train_anomaly_model(
     )
 
     return AnomalyTrainResponse(**result)
+
+
+# ==========================================
+# AI Semantic Analysis Endpoints
+# ==========================================
+
+
+@router.post(
+    "/{document_id}/qa",
+    response_model=DocumentQAResponse,
+)
+async def ask_document_question(
+    document_id: str,
+    body: DocumentQARequest,
+    db: Session = Depends(get_db),
+    service: DocumentService = Depends(
+        get_document_service
+    ),
+):
+    """Ask a question about a specific document.
+
+    Uses Groq LLM to answer questions grounded
+    in the document's extracted text.
+    """
+
+    document = service.get_document(
+        document_id
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found"
+        )
+
+    # Get document text
+    content_repo = DocumentContentRepository(db)
+    content = content_repo.get_by_document_id(
+        document_id
+    )
+
+    if not content or not content.cleaned_text:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Document content not found. "
+                "Process the document first."
+            )
+        )
+
+    ai_service = get_ai_service()
+    result = ai_service.ask_question(
+        document_text=content.cleaned_text,
+        question=body.question,
+        document_type=document.document_type,
+    )
+
+    return DocumentQAResponse(**result)
+
+
+@router.post(
+    "/{document_id}/reanalyze",
+    response_model=AIAnalysisResponse,
+)
+async def reanalyze_document(
+    document_id: str,
+    api_key: Optional[str] = Body(
+        None, embed=True
+    ),
+    db: Session = Depends(get_db),
+    service: DocumentService = Depends(
+        get_document_service
+    ),
+):
+    """Re-run AI analysis on a document.
+
+    Optionally accepts an API key for one-time use.
+    """
+
+    document = service.get_document(
+        document_id
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found"
+        )
+
+    content_repo = DocumentContentRepository(db)
+    content = content_repo.get_by_document_id(
+        document_id
+    )
+
+    if not content or not content.cleaned_text:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Document content not found. "
+                "Process the document first."
+            )
+        )
+
+    ai_service = get_ai_service(api_key=api_key)
+    result = ai_service.analyze_document(
+        document_text=content.cleaned_text,
+        document_type=document.document_type,
+        filename=document.filename,
+    )
+
+    # Store updated analysis
+    repo = DocumentRepository(db)
+    repo.store_ai_analysis(
+        document_id=document_id,
+        ai_analysis=result,
+    )
+
+    return AIAnalysisResponse(**result)

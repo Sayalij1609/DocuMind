@@ -35,6 +35,11 @@ from app.services.document_repository import (
     DocumentRepository
 )
 
+from app.services.ai_analysis_service import (
+    AIAnalysisService,
+    get_ai_service,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +67,9 @@ class DocumentProcessingService:
         ] = None,
         anomaly_service: Optional[
             AnomalyDetectionService
+        ] = None,
+        ai_analysis_service: Optional[
+            AIAnalysisService
         ] = None,
     ):
 
@@ -91,6 +99,11 @@ class DocumentProcessingService:
 
         self.anomaly_service = (
             anomaly_service
+        )
+
+        self.ai_analysis_service = (
+            ai_analysis_service
+            or get_ai_service()
         )
 
     def process_document(
@@ -185,6 +198,21 @@ class DocumentProcessingService:
             # --------------------------------
 
             self._detect_anomalies(document_id)
+
+            # --------------------------------
+            # AI Semantic Analysis (non-blocking)
+            # --------------------------------
+
+            self._run_ai_analysis(
+                document_id,
+                content.cleaned_text,
+                (
+                    classification_result.document_type
+                    if classification_result
+                    else None
+                ),
+                document.filename,
+            )
 
             logger.info(
                 "Document processing completed: %s",
@@ -475,4 +503,63 @@ class DocumentProcessingService:
                 "Anomaly detection failed for "
                 "document %s (non-blocking)",
                 document_id
-            )
+            )
+
+    def _run_ai_analysis(
+        self,
+        document_id: str,
+        cleaned_text: str,
+        document_type: str | None,
+        filename: str | None,
+    ):
+        """
+        Run AI semantic analysis on extracted text.
+
+        This is non-blocking: if analysis fails,
+        document processing still completes.
+        """
+
+        if self.ai_analysis_service is None:
+
+            logger.debug(
+                "No AI analysis service "
+                "configured, skipping."
+            )
+
+            return
+
+        try:
+
+            ai_result = (
+                self.ai_analysis_service
+                .analyze_document(
+                    document_text=cleaned_text,
+                    document_type=document_type,
+                    filename=filename,
+                )
+            )
+
+            # Store AI analysis in repository
+            # as a special extraction field
+            self.repository.store_ai_analysis(
+                document_id=document_id,
+                ai_analysis=ai_result,
+            )
+
+            logger.info(
+                "Document %s AI analysis: "
+                "method=%s",
+                document_id,
+                ai_result.get(
+                    "analysis_method", "unknown"
+                ),
+            )
+
+        except Exception:
+
+            logger.exception(
+                "AI analysis failed for "
+                "document %s (non-blocking)",
+                document_id
+            )
+

@@ -1,10 +1,13 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.document import Document ,  DocumentStatus
+from app.models.extraction_result import (
+    ExtractionResultModel,
+)
 
 
 class DocumentRepository:
@@ -163,3 +166,84 @@ class DocumentRepository:
         )
 
         return document
+
+    # ----------------------------------------
+    # AI Analysis Storage
+    # ----------------------------------------
+
+    def store_ai_analysis(
+        self,
+        document_id: str,
+        ai_analysis: dict[str, Any],
+    ) -> None:
+        """
+        Store AI analysis result inside the
+        extraction_results JSON column.
+
+        Uses the __ai_analysis__ key so it
+        does not collide with field-level data.
+        """
+
+        statement = select(
+            ExtractionResultModel
+        ).where(
+            ExtractionResultModel.document_id
+            == document_id
+        )
+
+        record = self.session.scalar(statement)
+
+        if record:
+            # Merge into existing fields
+            fields = dict(
+                record.extracted_fields or {}
+            )
+            fields["__ai_analysis__"] = ai_analysis
+            record.extracted_fields = fields
+
+            from sqlalchemy.orm.attributes import (
+                flag_modified,
+            )
+            flag_modified(
+                record, "extracted_fields"
+            )
+
+            self.session.commit()
+        else:
+            # No extraction record yet — create one
+            record = ExtractionResultModel(
+                document_id=document_id,
+                document_type="unknown",
+                extracted_fields={
+                    "__ai_analysis__": ai_analysis
+                },
+                extraction_method="ai_analysis",
+                extraction_version="1.0.0",
+                extracted_at=datetime.utcnow(),
+            )
+            self.session.add(record)
+            self.session.commit()
+
+    def get_ai_analysis(
+        self,
+        document_id: str,
+    ) -> Optional[dict[str, Any]]:
+        """
+        Retrieve AI analysis from extraction result.
+        """
+
+        statement = select(
+            ExtractionResultModel
+        ).where(
+            ExtractionResultModel.document_id
+            == document_id
+        )
+
+        record = self.session.scalar(statement)
+
+        if not record or not record.extracted_fields:
+            return None
+
+        return record.extracted_fields.get(
+            "__ai_analysis__"
+        )

@@ -121,6 +121,54 @@ class DocumentAnalysisResponse(BaseModel):
     is_anomaly: bool | None = None
     anomaly_score: float | None = None
 
+    # AI Semantic Analysis (Phase 11)
+    ai_analysis: dict | None = None
+
     model_config = ConfigDict(
         from_attributes=True
     )
+
+
+# ------------------------------------------------
+# AI Analysis response schemas (Phase 11)
+# ------------------------------------------------
+
+class AIAnalysisResponse(BaseModel):
+    """Full AI semantic analysis result."""
+
+    executive_summary: str = ""
+    document_type: str = "unknown"
+    entities: dict = {}
+    relationships: list[dict] = []
+    line_items: list[dict] = []
+    financial_validation: dict = {}
+    risk_narrative: str = ""
+    analysis_method: str = "none"
+    analyzed_at: str | None = None
+
+
+class DocumentQARequest(BaseModel):
+    """Request body for document Q&A."""
+    question: str
+
+
+class DocumentQAResponse(BaseModel):
+    """Response for document Q&A."""
+
+    answer: str
+    citations: list[str] = []
+    method: str = "unavailable"
+
+
+class AIConfigRequest(BaseModel):
+    """Request to update AI config at runtime."""
+    api_key: str
+
+
+class AIStatusResponse(BaseModel):
+    """AI configuration status."""
+
+    configured: bool = False
+    model: str = ""
+    source: str = "none"
+
