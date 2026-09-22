@@ -50,7 +50,7 @@ class AIAnalysisService:
         self.model = (
             model
             or settings.groq_model
-            or "llama-3.3-70b-versatile"
+            or "qwen/qwen3.8-27b"
         )
 
     # ==========================================

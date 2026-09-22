@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from app.models.document import DocumentStatus
 
@@ -212,6 +212,22 @@ class DocumentProcessingService:
                     else None
                 ),
                 document.filename,
+            )
+
+            # --------------------------------
+            # RAG Vector Store Indexing (non-blocking)
+            # --------------------------------
+
+            self._index_for_rag(
+                document_id,
+                (
+                    classification_result.document_type
+                    if classification_result
+                    else "unknown"
+                ),
+                document.filename or "",
+                content.cleaned_text or "",
+                extraction_result,
             )
 
             logger.info(
@@ -562,4 +578,56 @@ class DocumentProcessingService:
                 "document %s (non-blocking)",
                 document_id
             )
+
+    def _index_for_rag(
+        self,
+        document_id: str,
+        document_type: str,
+        filename: str,
+        fallback_text: str,
+        extraction_result: Any = None,
+    ):
+        """
+        Index document pages and structured extraction entities into RAG vector store.
+
+        This is non-blocking: if indexing encounters an issue,
+        document processing still completes successfully.
+        """
+        try:
+            from app.rag.pipeline import get_rag_pipeline
+
+            rag_pipeline = get_rag_pipeline()
+
+            pages = []
+            if hasattr(self.pipeline, "page_repository") and self.pipeline.page_repository:
+                pages = self.pipeline.page_repository.get_by_document_id(document_id)
+
+            ext_data = None
+            if extraction_result:
+                if hasattr(extraction_result, "fields"):
+                    ext_data = getattr(extraction_result, "fields")
+                elif isinstance(extraction_result, dict):
+                    ext_data = extraction_result
+
+            count = rag_pipeline.index_document(
+                document_id=document_id,
+                document_type=document_type,
+                filename=filename,
+                pages=pages,
+                fallback_text=fallback_text,
+                extraction_data=ext_data,
+            )
+
+            logger.info(
+                "RAG indexed %d chunks for document %s",
+                count,
+                document_id,
+            )
+
+        except Exception:
+            logger.exception(
+                "RAG indexing failed for document %s (non-blocking)",
+                document_id,
+            )
+
 

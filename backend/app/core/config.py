@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # Groq AI Analysis (Semantic Intelligence)
     groq_api_key: Optional[str] = None
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "qwen/qwen3.8-27b"
 
     model_config = SettingsConfigDict(
         env_file=".env",

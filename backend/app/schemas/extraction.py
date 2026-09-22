@@ -151,17 +151,38 @@ class AIAnalysisResponse(BaseModel):
     analyzed_at: str | None = None
 
 
+class SourceCitation(BaseModel):
+    """Structured attribution source for RAG."""
+
+    document_id: str
+    filename: str = "Document"
+    page_number: int = 1
+    chunk_id: str = ""
+    chunk_type: str = "page_text"
+    snippet: str = ""
+    similarity_score: float = 0.0
+
+
 class DocumentQARequest(BaseModel):
-    """Request body for document Q&A."""
+    """Request body for single-document Q&A."""
+
     question: str
 
 
+class MultiDocumentQARequest(BaseModel):
+    """Request body for multi-document / repository-wide Q&A."""
+
+    question: str
+    document_ids: list[str] | None = None
+
+
 class DocumentQAResponse(BaseModel):
-    """Response for document Q&A."""
+    """Response for document Q&A with structured sources and citations."""
 
     answer: str
+    sources: list[SourceCitation] = []
     citations: list[str] = []
-    method: str = "unavailable"
+    method: str = "rag"
 
 
 class AIConfigRequest(BaseModel):

@@ -121,6 +121,8 @@ from app.schemas.extraction import (
     LayoutLMAnalysisResponse,
     LayoutLMEntityResponse,
     LayoutLMPageResponse,
+    MultiDocumentQARequest,
+    SourceCitation,
 )
 
 from app.processing.document_extractor import (
@@ -140,6 +142,8 @@ from app.services.ai_analysis_service import (
     get_runtime_api_key,
     set_runtime_api_key,
 )
+
+from app.rag.pipeline import get_rag_pipeline
 
 
 router = APIRouter(
@@ -1208,6 +1212,22 @@ async def train_anomaly_model(
 
 
 @router.post(
+    "/qa",
+    response_model=DocumentQAResponse,
+)
+async def ask_multi_document_question(
+    body: MultiDocumentQARequest,
+):
+    """Ask a question across multiple documents or repository-wide using RAG."""
+    rag_pipeline = get_rag_pipeline()
+    result = rag_pipeline.query_documents(
+        question=body.question,
+        document_ids=body.document_ids,
+    )
+    return DocumentQAResponse(**result)
+
+
+@router.post(
     "/{document_id}/qa",
     response_model=DocumentQAResponse,
 )
@@ -1219,10 +1239,11 @@ async def ask_document_question(
         get_document_service
     ),
 ):
-    """Ask a question about a specific document.
+    """Ask a question about a specific document using RAG.
 
-    Uses Groq LLM to answer questions grounded
-    in the document's extracted text.
+    Retrieves page-aware chunks from the vector store with
+    metadata filtering, constructs a grounded context, and
+    generates an answer with page source citations.
     """
 
     document = service.get_document(
@@ -1235,29 +1256,84 @@ async def ask_document_question(
             detail="Document not found"
         )
 
-    # Get document text
-    content_repo = DocumentContentRepository(db)
-    content = content_repo.get_by_document_id(
-        document_id
-    )
+    rag_pipeline = get_rag_pipeline()
 
-    if not content or not content.cleaned_text:
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                "Document content not found. "
-                "Process the document first."
-            )
+    # If document not yet indexed in vector store, auto-index it now
+    existing = rag_pipeline.vector_store.get_by_document_id(document_id)
+    if not existing:
+        page_repo = DocumentPageRepository(db)
+        pages = page_repo.get_by_document_id(document_id)
+
+        content_repo = DocumentContentRepository(db)
+        content = content_repo.get_by_document_id(document_id)
+        fallback_text = content.cleaned_text if content else ""
+
+        ext_repo = ExtractionResultRepository(db)
+        ext_res = ext_repo.get_by_document_id(document_id)
+        ext_data = ext_res.fields if ext_res and hasattr(ext_res, "fields") else None
+
+        rag_pipeline.index_document(
+            document_id=document_id,
+            document_type=document.document_type or "unknown",
+            filename=document.filename or "",
+            pages=pages,
+            fallback_text=fallback_text,
+            extraction_data=ext_data,
         )
 
-    ai_service = get_ai_service()
-    result = ai_service.ask_question(
-        document_text=content.cleaned_text,
+    result = rag_pipeline.query_document(
+        document_id=document_id,
         question=body.question,
         document_type=document.document_type,
     )
 
     return DocumentQAResponse(**result)
+
+
+@router.post(
+    "/{document_id}/reindex",
+)
+async def reindex_document_rag(
+    document_id: str,
+    db: Session = Depends(get_db),
+    service: DocumentService = Depends(
+        get_document_service
+    ),
+):
+    """Re-index a document's pages and extraction results into RAG vector store."""
+    document = service.get_document(document_id)
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found"
+        )
+
+    rag_pipeline = get_rag_pipeline()
+    page_repo = DocumentPageRepository(db)
+    pages = page_repo.get_by_document_id(document_id)
+
+    content_repo = DocumentContentRepository(db)
+    content = content_repo.get_by_document_id(document_id)
+    fallback_text = content.cleaned_text if content else ""
+
+    ext_repo = ExtractionResultRepository(db)
+    ext_res = ext_repo.get_by_document_id(document_id)
+    ext_data = ext_res.fields if ext_res and hasattr(ext_res, "fields") else None
+
+    count = rag_pipeline.index_document(
+        document_id=document_id,
+        document_type=document.document_type or "unknown",
+        filename=document.filename or "",
+        pages=pages,
+        fallback_text=fallback_text,
+        extraction_data=ext_data,
+    )
+
+    return {
+        "document_id": document_id,
+        "filename": document.filename,
+        "indexed_chunks": count,
+    }
 
 
 @router.post(
