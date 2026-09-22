@@ -10,6 +10,8 @@ import {
   Layers,
   Database,
   Search,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   getDocuments,
@@ -21,6 +23,98 @@ import {
 } from '../services/api';
 import './QAPage.css';
 
+function FormattedAnswer({ text }) {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  const elements = [];
+  let tableLines = [];
+  let inTable = false;
+
+  const renderInline = (str) => {
+    const parts = str.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  const flushTable = (key) => {
+    if (tableLines.length === 0) return;
+    const headerLine = tableLines[0];
+    const dataLines = tableLines.slice(2);
+
+    const parseRow = (row) =>
+      row
+        .split('|')
+        .map(c => c.trim())
+        .filter((c, i, arr) => i !== 0 && i !== arr.length - 1);
+
+    const headers = parseRow(headerLine);
+    elements.push(
+      <div key={`table-${key}`} className="qa-table-wrapper">
+        <table className="qa-markdown-table">
+          <thead>
+            <tr>
+              {headers.map((h, hi) => (
+                <th key={hi}>{renderInline(h)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dataLines.map((row, ri) => {
+              const cells = parseRow(row);
+              return (
+                <tr key={ri}>
+                  {cells.map((cell, ci) => (
+                    <td key={ci}>{renderInline(cell)}</td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+    tableLines = [];
+    inTable = false;
+  };
+
+  lines.forEach((line, lineIdx) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      inTable = true;
+      tableLines.push(trimmed);
+    } else {
+      if (inTable) {
+        flushTable(lineIdx);
+      }
+      if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+        elements.push(
+          <div key={lineIdx} className="qa-list-item">
+            <span className="qa-bullet">•</span>
+            <span>{renderInline(trimmed.slice(2))}</span>
+          </div>
+        );
+      } else if (trimmed) {
+        elements.push(
+          <p key={lineIdx} className="qa-paragraph">
+            {renderInline(trimmed)}
+          </p>
+        );
+      }
+    }
+  });
+
+  if (inTable) {
+    flushTable('final');
+  }
+
+  return <div className="qa-formatted-answer">{elements}</div>;
+}
+
 export default function QAPage() {
   const [documents, setDocuments] = useState([]);
   const [selectedDocId, setSelectedDocId] = useState('__all__');
@@ -28,6 +122,7 @@ export default function QAPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [reindexing, setReindexing] = useState(false);
+  const [expandedSources, setExpandedSources] = useState({});
   const [aiStatus, setAiStatus] = useState(null);
   const [showKeyDialog, setShowKeyDialog] = useState(false);
   const [keyInput, setKeyInput] = useState('');
@@ -280,46 +375,87 @@ export default function QAPage() {
                 </div>
               )}
               <div className={`qa-msg-bubble ${msg.error ? 'error-bubble' : ''}`}>
-                <div className="qa-msg-text">{msg.text}</div>
+                <FormattedAnswer text={msg.text} />
 
-                {/* Structured RAG Evidence Sources */}
+                {/* Structured RAG Evidence Tray */}
                 {msg.sources && msg.sources.length > 0 && (
-                  <div className="qa-sources-container">
-                    <div className="qa-sources-title">
-                      <Layers size={13} />
-                      <span>Retrieved Evidence ({msg.sources.length} {msg.sources.length === 1 ? 'source' : 'sources'})</span>
+                  <div className="qa-evidence-tray">
+                    <div className="qa-evidence-summary">
+                      <div className="qa-source-chips">
+                        {Array.from(
+                          new Set(
+                            msg.sources.map(
+                              s => `${s.filename} — Page ${s.page_number}`
+                            )
+                          )
+                        ).map((label, lIdx) => (
+                          <span key={lIdx} className="qa-source-pill">
+                            <FileText size={11} />
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className="qa-evidence-toggle"
+                        onClick={() =>
+                          setExpandedSources(prev => ({
+                            ...prev,
+                            [idx]: !prev[idx],
+                          }))
+                        }
+                      >
+                        {expandedSources[idx] ? (
+                          <ChevronUp size={13} />
+                        ) : (
+                          <ChevronDown size={13} />
+                        )}
+                        <span>
+                          {expandedSources[idx]
+                            ? 'Hide Passages'
+                            : `Inspect Passages (${msg.sources.length})`}
+                        </span>
+                      </button>
                     </div>
-                    <div className="qa-sources-list">
-                      {msg.sources.map((src, sIdx) => (
-                        <div key={sIdx} className="qa-source-card">
-                          <div className="qa-source-header">
-                            <span className="qa-source-badge">
-                              <FileText size={12} />
-                              {src.filename} — Page {src.page_number}
-                            </span>
-                            {src.similarity_score > 0 && (
-                              <span className="qa-source-score">
-                                {(src.similarity_score * 100).toFixed(0)}% match
+
+                    {expandedSources[idx] && (
+                      <div className="qa-sources-expanded animate-fade-in">
+                        {msg.sources.map((src, sIdx) => (
+                          <div key={sIdx} className="qa-source-card">
+                            <div className="qa-source-header">
+                              <span className="qa-source-badge">
+                                <FileText size={11} />
+                                {src.filename} — Page {src.page_number}
                               </span>
+                              {src.similarity_score > 0 && (
+                                <span className="qa-source-score">
+                                  {(src.similarity_score * 100).toFixed(0)}% match
+                                </span>
+                              )}
+                            </div>
+                            {src.snippet && (
+                              <p className="qa-source-snippet">"{src.snippet}"</p>
                             )}
                           </div>
-                          {src.snippet && (
-                            <p className="qa-source-snippet">"{src.snippet}"</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Citations Pills fallback */}
-                {(!msg.sources || msg.sources.length === 0) && msg.citations && msg.citations.length > 0 && (
-                  <div className="qa-citations">
-                    {msg.citations.map((c, ci) => (
-                      <span key={ci} className="qa-citation-tag">{c}</span>
-                    ))}
-                  </div>
-                )}
+                {/* Citations fallback */}
+                {(!msg.sources || msg.sources.length === 0) &&
+                  msg.citations &&
+                  msg.citations.length > 0 && (
+                    <div className="qa-citations">
+                      {msg.citations.map((c, ci) => (
+                        <span key={ci} className="qa-source-pill">
+                          <FileText size={11} />
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
               </div>
             </div>
           ))}
