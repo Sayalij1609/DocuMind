@@ -1,0 +1,903 @@
+================================================================================
+                    DOCUMIND — PROJECT DOCUMENTATION
+            Intelligent Document Processing & Analysis Platform
+================================================================================
+
+Generated: September 2026
+Version: 1.0.0
+Author: Documind Development Team
+
+================================================================================
+                        TABLE OF CONTENTS
+================================================================================
+
+1.  PROJECT OVERVIEW
+2.  TECHNOLOGY STACK
+3.  SYSTEM ARCHITECTURE
+4.  PHASE-WISE IMPLEMENTATION
+    Phase 1  — Project Foundation & Setup
+    Phase 2  — Database Design & ORM
+    Phase 3  — OCR Engine & Text Extraction
+    Phase 4  — Document Classification (ML)
+    Phase 5  — Field Extraction Engine
+    Phase 6  — Business Rule Validation
+    Phase 7  — Duplicate Detection
+    Phase 8  — Anomaly Detection
+    Phase 9  — AI Semantic Analysis (Groq LLM)
+    Phase 10 — Dashboard & Analytics UI
+    Phase 11 — Document Detail & Analysis UI
+    Phase 12 — RAG-Based Document Q&A
+    Phase 13 — Advanced Production Features
+5.  API REFERENCE
+6.  DATABASE SCHEMA
+7.  FRONTEND PAGES & COMPONENTS
+8.  DEPLOYMENT
+9.  TESTING
+10. FUTURE ENHANCEMENTS
+
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+Documind is an enterprise-grade, AI-powered document intelligence platform that
+automates the extraction, classification, validation, and analysis of business
+documents such as invoices, receipts, contracts, and bank statements.
+
+The platform processes uploaded documents through a multi-stage pipeline:
+
+    Upload -> OCR -> OCR Correction -> Classification -> Field Extraction
+    -> Validation -> Duplicate Detection -> Anomaly Detection -> AI Analysis
+    -> RAG Indexing -> PDF Report Generation
+
+KEY CAPABILITIES:
+- Optical Character Recognition (OCR) using Tesseract
+- LLM-powered OCR post-processing correction
+- Machine Learning document classification (TF-IDF + SGD)
+- Deterministic regex-based field extraction
+- Business rule validation engine (6 rules)
+- TF-IDF cosine similarity duplicate detection
+- Isolation Forest anomaly detection
+- Groq LLM semantic analysis (summaries, entities, risk)
+- RAG (Retrieval-Augmented Generation) document Q&A
+- Document comparison with field-level diffs
+- Confidence scoring with weighted aggregation
+- Branded PDF report generation
+- Multi-document batch processing
+- Docker containerization
+
+
+================================================================================
+2. TECHNOLOGY STACK
+================================================================================
+
+BACKEND:
+    Language:       Python 3.12
+    Framework:      FastAPI (async, high-performance)
+    ORM:            SQLAlchemy 2.x
+    Database:       PostgreSQL 14+
+    Migrations:     Alembic
+    OCR:            Tesseract OCR (pytesseract)
+    PDF Parsing:    pdf2image + Pillow
+    ML:             scikit-learn (TF-IDF, SGD, IsolationForest)
+    AI/LLM:         Groq API (Qwen 3.8-27B model)
+    Embeddings:     sentence-transformers (all-MiniLM-L6-v2)
+    PDF Reports:    fpdf2
+    Validation:     Custom business rule engine
+
+FRONTEND:
+    Language:       JavaScript (ES2022+)
+    Framework:      React 18 (Vite)
+    Styling:        Vanilla CSS (custom design system)
+    Icons:          Lucide React
+    Routing:        React Router v6
+    HTTP Client:    Axios
+    Charts:         Recharts (for dashboard)
+
+INFRASTRUCTURE:
+    Containerization:   Docker + Docker Compose
+    Web Server:         Nginx (production frontend)
+    Reverse Proxy:      Nginx -> FastAPI
+    Process Manager:    Uvicorn (ASGI)
+
+
+================================================================================
+3. SYSTEM ARCHITECTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────┐
+│                      FRONTEND (React + Vite)                     │
+│                                                                  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ ┌─────────┐ │
+│  │Dashboard │ │  Upload  │ │Documents │ │  Q&A   │ │ Compare │ │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ └────┬────┘ │
+│       └─────────────┴───────────┴────────────┴───────────┘      │
+│                          │ Axios HTTP                            │
+└──────────────────────────┼──────────────────────────────────────┘
+                           │
+                    ┌──────▼──────┐
+                    │  Nginx /    │
+                    │  Dev Server │
+                    └──────┬──────┘
+                           │
+┌──────────────────────────┼──────────────────────────────────────┐
+│                    BACKEND (FastAPI)                             │
+│                          │                                       │
+│  ┌───────────────────────▼────────────────────────────────────┐  │
+│  │                   API Router Layer                         │  │
+│  │  /upload  /process  /analysis  /qa  /compare  /report      │  │
+│  └───────────────────────┬────────────────────────────────────┘  │
+│                          │                                       │
+│  ┌───────────────────────▼────────────────────────────────────┐  │
+│  │              Document Processing Pipeline                  │  │
+│  │                                                            │  │
+│  │  1. OCR Extraction (Tesseract)                             │  │
+│  │  2. OCR Correction (Groq LLM / Regex Fallback)             │  │
+│  │  3. ML Classification (TF-IDF + SGD Classifier)            │  │
+│  │  4. Field Extraction (Regex Engine)                        │  │
+│  │  5. Business Rule Validation (6 Rules)                     │  │
+│  │  6. Duplicate Detection (TF-IDF Cosine + SHA-256)          │  │
+│  │  7. Anomaly Detection (Isolation Forest)                   │  │
+│  │  8. AI Semantic Analysis (Groq LLM)                        │  │
+│  │  9. RAG Indexing (Chunking + Embeddings + VectorStore)     │  │
+│  └───────────────────────┬────────────────────────────────────┘  │
+│                          │                                       │
+│  ┌───────────────────────▼────────────────────────────────────┐  │
+│  │               Service Layer                                │  │
+│  │  DocumentService  |  BatchService  |  ComparisonService    │  │
+│  │  ConfidenceService |  ReportService |  RAGPipeline         │  │
+│  └───────────────────────┬────────────────────────────────────┘  │
+│                          │                                       │
+│  ┌───────────────────────▼────────────────────────────────────┐  │
+│  │            Repository Layer (SQLAlchemy ORM)               │  │
+│  │  DocumentRepository | ExtractionResultRepository           │  │
+│  │  ValidationResultRepository | AnomalyResultRepository      │  │
+│  │  DuplicateResultRepository | DocumentContentRepository     │  │
+│  └───────────────────────┬────────────────────────────────────┘  │
+└──────────────────────────┼──────────────────────────────────────┘
+                           │
+                    ┌──────▼──────┐
+                    │ PostgreSQL  │
+                    │  Database   │
+                    └─────────────┘
+
+
+================================================================================
+4. PHASE-WISE IMPLEMENTATION
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 1 — PROJECT FOUNDATION & SETUP
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Set up the full-stack project structure with FastAPI backend and
+    React frontend, including dev environment, linting, and basic routing.
+
+FILES CREATED:
+    backend/
+        app/__init__.py
+        app/main.py                  — FastAPI application entry point
+        app/core/config.py           — Settings via pydantic-settings
+        app/core/logging.py          — Logging configuration
+        requirements.txt             — Python dependencies
+    frontend/
+        package.json                 — Vite + React project
+        src/App.jsx                  — Root component with React Router
+        src/main.jsx                 — Entry point
+        index.html                   — HTML template
+        vite.config.js               — Vite configuration
+
+KEY DECISIONS:
+    - FastAPI chosen for async performance and automatic OpenAPI docs
+    - React + Vite for fast HMR and modern build pipeline
+    - Vanilla CSS for maximum design control (no Tailwind)
+    - Monorepo structure (backend/ + frontend/ in single repo)
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 2 — DATABASE DESIGN & ORM
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Design and implement the relational database schema using SQLAlchemy
+    ORM with Alembic migrations for PostgreSQL.
+
+DATABASE TABLES:
+    documents              — Core document metadata (id, filename, status, type)
+    document_contents      — Extracted text per page (raw + cleaned)
+    extraction_results     — Key-value pairs from field extraction
+    validation_results     — Rule-by-rule validation outcomes
+    anomaly_results        — Isolation Forest scores and flags
+    duplicate_results      — Matched document pairs with similarity scores
+
+FILES CREATED:
+    backend/
+        app/database/session.py      — SQLAlchemy engine + SessionLocal
+        app/database/base.py         — Declarative base
+        app/database/dependencies.py — FastAPI Depends(get_db)
+        app/models/document.py       — Document ORM model
+        app/models/extraction.py     — ExtractionResult model
+        app/models/validation.py     — ValidationResult model
+        app/models/anomaly.py        — AnomalyResult model
+        app/models/duplicate.py      — DuplicateResult model
+        app/models/content.py        — DocumentContent model
+        alembic/                     — Migration scripts
+        alembic.ini
+
+KEY DECISIONS:
+    - UUID primary keys for documents (globally unique)
+    - Enum for document status (uploaded, processing, completed, failed)
+    - JSON columns for flexible field storage (extracted_fields, rule_results)
+    - One-to-many: Document -> Content pages, Extraction, Validation, etc.
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 3 — OCR ENGINE & TEXT EXTRACTION
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Implement document upload with OCR text extraction using Tesseract.
+    Support PDF (multi-page) and image files (JPG, PNG, TIFF).
+
+PIPELINE:
+    Upload File -> Validate Type/Size -> Save to Disk
+    -> Convert PDF to Images (pdf2image) -> Tesseract OCR per page
+    -> Clean Text (normalize whitespace, fix encoding)
+    -> Store raw_text + cleaned_text per page in DocumentContent
+
+FILES CREATED:
+    backend/
+        app/processing/ocr_engine.py      — Tesseract wrapper
+        app/processing/text_cleaner.py    — Text normalization
+        app/processing/page_storage.py    — Page-level content storage
+        app/services/document_service.py  — Upload + retrieval logic
+        app/services/document_repository.py
+
+SUPPORTED FORMATS:
+    - PDF (converted to images at 300 DPI via poppler/pdf2image)
+    - JPEG / JPG
+    - PNG
+    - TIFF
+
+OCR CONFIGURATION:
+    - Engine: Tesseract 5.x
+    - Language: English (eng)
+    - PSM: 3 (automatic page segmentation)
+    - DPI: 300 for PDF conversion
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 4 — DOCUMENT CLASSIFICATION (ML)
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Classify documents into types using a trained TF-IDF + SGD model.
+
+CLASSIFICATION TYPES:
+    - Invoice
+    - Receipt
+    - Contract
+    - Resume
+    - Bank Statement
+    - Unclassified (fallback)
+
+ML PIPELINE:
+    Cleaned Text -> TF-IDF Vectorizer (max 5000 features, 1-2 ngrams)
+    -> SGD Classifier (hinge loss) -> Predicted Type + Confidence Score
+
+FILES CREATED:
+    backend/
+        app/ml/classifier.py          — DocumentClassifier class
+        app/ml/train_classifier.py    — Training script
+        ml/artifacts/                 — Saved model + vectorizer (joblib)
+
+TRAINING DATA:
+    - Synthetic + real samples per document type
+    - 80/20 train/test split
+    - Cross-validation for hyperparameter tuning
+
+KEY DECISIONS:
+    - TF-IDF + SGD chosen for speed (no GPU required)
+    - Confidence threshold: 0.3 (below = "unclassified")
+    - Model serialized via joblib for fast loading
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 5 — FIELD EXTRACTION ENGINE
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Extract structured fields from document text using deterministic
+    regex patterns. Fields vary by document type.
+
+EXTRACTED FIELDS BY TYPE:
+    Invoice:
+        - Invoice Number, Date, Due Date
+        - Vendor Name, Vendor Address
+        - Total Amount, Tax Amount, Subtotal
+        - Currency, PO Number
+
+    Receipt:
+        - Store Name, Date, Total, Tax
+        - Payment Method, Card Last 4
+
+    Bank Statement:
+        - Account Number, Account Name
+        - Statement Period, Opening/Closing Balance
+        - Total Deposits, Total Withdrawals
+
+    Contract:
+        - Parties, Effective Date, Expiry Date
+        - Contract Value, Governing Law
+
+FILES CREATED:
+    backend/
+        app/ml/field_extractor.py     — FieldExtractor class
+        app/services/extraction_result_repository.py
+
+KEY DECISIONS:
+    - Regex over ML for deterministic, explainable extraction
+    - Each field has a confidence score based on match quality
+    - Fields stored as JSON dict: {field_name: {value, confidence}}
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 6 — BUSINESS RULE VALIDATION
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Validate extracted fields against business rules to catch errors,
+    inconsistencies, and compliance issues.
+
+VALIDATION RULES (6):
+    1. Mandatory Field Check
+       - Ensures required fields are present (e.g., total_amount, date)
+
+    2. Date Validity Check
+       - Dates are valid and not in the future
+       - Due date is after invoice date
+
+    3. Arithmetic Consistency
+       - Subtotal + Tax = Total Amount (within tolerance)
+
+    4. Amount Range Check
+       - Amounts are positive and within reasonable bounds
+
+    5. Invoice Number Format
+       - Matches expected patterns (alphanumeric)
+
+    6. Cross-Field Consistency
+       - Vendor name present if vendor address exists
+       - Currency consistency across fields
+
+VALIDATION STATUSES:
+    - VALID:   All rules passed
+    - WARNING: Non-critical rules failed
+    - INVALID: Critical rules failed
+
+FILES CREATED:
+    backend/
+        app/validation/rule_engine.py         — RuleEngine class
+        app/validation/rules/                 — Individual rule classes
+        app/services/validation_result_repository.py
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 7 — DUPLICATE DETECTION
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Detect duplicate or near-duplicate documents using text similarity
+    and content hashing.
+
+DETECTION METHODS:
+    1. SHA-256 Hash Match (exact duplicate)
+       - Hash of cleaned text content
+       - Similarity = 1.0 if match
+
+    2. TF-IDF Cosine Similarity (near duplicate)
+       - Build TF-IDF vectors from all document texts
+       - Compute pairwise cosine similarity
+       - Flag pairs above threshold (default: 0.85)
+
+DUPLICATE TYPES:
+    - EXACT:    SHA-256 hash match
+    - NEAR:     Cosine similarity >= 0.85
+    - PARTIAL:  Cosine similarity >= 0.70
+
+FILES CREATED:
+    backend/
+        app/dedup/dedup_service.py
+        app/services/duplicate_result_repository.py
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 8 — ANOMALY DETECTION
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Detect statistically anomalous documents using an Isolation Forest
+    model trained on document feature vectors.
+
+FEATURES USED:
+    - Text length (character count)
+    - Word count
+    - Number of extracted fields
+    - Total monetary amount
+    - Number of validation failures
+    - Classification confidence
+
+TRAINING:
+    - Unsupervised (no labels required)
+    - Contamination factor: 0.05 (5% expected anomalies)
+    - Auto-trains when >= 5 documents exist
+
+OUTPUT:
+    - is_anomaly: boolean flag
+    - anomaly_score: float (higher = more anomalous)
+    - decision_function_score: float (negative = anomaly)
+
+FILES CREATED:
+    backend/
+        app/anomaly/anomaly_detector.py
+        app/services/anomaly_result_repository.py
+        app/api/document_routes.py (anomaly endpoints)
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 9 — AI SEMANTIC ANALYSIS (GROQ LLM)
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Use Groq-hosted LLM (Qwen 3.8-27B) for deep semantic analysis
+    of document content, generating structured insights.
+
+AI ANALYSIS OUTPUT:
+    - Executive Summary: 2-3 sentence document overview
+    - Entities: Organizations, people, dates, addresses, financials
+    - Line Items: Individual transaction/item rows
+    - Financial Validation: Cross-checks extracted amounts
+    - Risk Narrative: Potential compliance or fraud risks
+    - Recommendations: Suggested next steps
+
+ARCHITECTURE:
+    Document Text -> Truncate to context window
+    -> Structured prompt with JSON schema
+    -> Groq API (Qwen model)
+    -> Parse JSON response -> Store in extraction_results
+
+FALLBACK:
+    If Groq API unavailable, falls back to local heuristic analysis:
+    - Regex-based entity extraction
+    - Rule-based summary generation
+    - No LLM dependency required
+
+FILES CREATED:
+    backend/
+        app/services/ai_analysis_service.py
+        app/schemas/ai_analysis.py
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 10 — DASHBOARD & ANALYTICS UI
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Build a professional, data-rich dashboard showing aggregate
+    analytics across all processed documents.
+
+DASHBOARD SECTIONS:
+    1. Quick Stats Cards
+       - Total Documents, Processed, Pending, Failed
+
+    2. Document Type Distribution
+       - Pie/donut chart of document categories
+
+    3. Validation Status Overview
+       - Valid / Warning / Invalid counts
+
+    4. Anomaly Summary
+       - Normal vs Flagged documents
+
+    5. Recent Documents Table
+       - Last 10 documents with status, type, actions
+
+    6. Processing Pipeline Health
+       - Average processing time, success rate
+
+FILES CREATED:
+    frontend/
+        src/pages/DashboardPage.jsx
+        src/pages/DashboardPage.css
+        src/components/StatusBadge.jsx
+        src/components/Layout.jsx
+        src/components/Layout.css
+
+DESIGN SYSTEM:
+    - CSS custom properties for colors, spacing, typography
+    - Dark mode support
+    - Glassmorphism card effects
+    - Smooth micro-animations
+    - Responsive grid layout
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 11 — DOCUMENT DETAIL & ANALYSIS UI
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Build the document detail page showing full analysis results
+    in a clean, tabbed interface.
+
+PAGE STATES:
+    1. UPLOADED (pre-processing)
+       - Shows file info + "Start Analysis" button
+       - Processing pipeline diagram
+
+    2. PROCESSING (in-progress)
+       - Real-time status polling (2-second intervals)
+       - Animated pipeline progress indicator
+
+    3. COMPLETED (post-analysis)
+       - 4-metric audit health ribbon
+       - Tabbed content sections
+
+TABS:
+    - Audit Summary: Executive overview, entities, risk narrative
+    - Extracted Fields: Key-value table with confidence scores
+    - Line Items: Transaction/item table (if available)
+    - Financial Validation: Math checks, totals reconciliation
+    - Validation Rules: Pass/fail for each business rule
+    - Anomaly Report: Score, decision function, explanation
+    - Extracted Text: Raw OCR output with copy button
+
+FILES CREATED:
+    frontend/
+        src/pages/DocumentDetailPage.jsx
+        src/pages/DocumentDetailPage.css
+        src/pages/UploadPage.jsx
+        src/pages/UploadPage.css
+        src/pages/DocumentsPage.jsx
+        src/pages/DocumentsPage.css
+        src/components/ErrorMessage.jsx
+        src/components/LoadingSpinner.jsx
+        src/components/EmptyState.jsx
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 12 — RAG-BASED DOCUMENT Q&A
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Allow users to ask natural language questions about uploaded
+    documents using a Retrieval-Augmented Generation (RAG) pipeline.
+
+RAG ARCHITECTURE:
+    User Question
+      |
+      v
+    Question Embedding (all-MiniLM-L6-v2)
+      |
+      v
+    Vector Similarity Search (cosine, top-5 chunks)
+      |
+      v
+    Context Construction (relevant chunks + metadata)
+      |
+      v
+    Groq LLM (grounded answer generation)
+      |
+      v
+    Answer + Source Citations
+
+DOCUMENT INDEXING:
+    - Documents split into page-aware chunks (500 chars, 100 overlap)
+    - Each chunk retains: document_id, page_number, chunk_id, source text
+    - Chunks embedded using sentence-transformers
+    - Stored in in-memory vector store (NumPy cosine similarity)
+
+Q&A MODES:
+    1. Single Document Q&A
+       - POST /api/documents/{id}/qa
+       - Searches only within the specified document
+
+    2. Multi-Document Q&A
+       - POST /api/documents/qa
+       - Searches across all indexed documents
+       - Returns answers with document source citations
+
+FRONTEND:
+    - Chat-style interface with message bubbles
+    - Document selector dropdown
+    - Source citations with page numbers and match scores
+    - "Ask across all documents" mode
+
+FILES CREATED:
+    backend/
+        app/rag/chunker.py            — Page-aware text chunking
+        app/rag/embedder.py           — Sentence-transformer embeddings
+        app/rag/vector_store.py       — In-memory vector store
+        app/rag/llm_client.py         — Groq LLM wrapper
+        app/rag/rag_pipeline.py       — Full RAG orchestrator
+        app/schemas/rag.py            — Q&A request/response schemas
+    frontend/
+        src/pages/QAPage.jsx
+        src/pages/QAPage.css
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 13 — ADVANCED PRODUCTION FEATURES
+────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+    Add enterprise-grade features for production readiness.
+
+FEATURE 1: MULTI-DOCUMENT BATCH PROCESSING
+    - Upload up to 20 documents simultaneously
+    - Background processing with thread pool
+    - Real-time batch status polling
+    - Per-file progress tracking (pending/processing/completed/failed)
+    - Files: batch_service.py, UploadPage batch mode
+
+FEATURE 2: OCR POST-PROCESSING CORRECTION
+    - Groq LLM corrects OCR artifacts while preserving numbers
+    - Regex fallback for common errors (rn->m, 1->l, 0->O)
+    - Runs immediately after OCR, before all downstream stages
+    - Files: ocr_correction_service.py
+
+FEATURE 3: DOCUMENT COMPARISON
+    - Compare any two documents side-by-side
+    - TF-IDF cosine similarity score
+    - Field-by-field diff (matched, only-in-A, only-in-B)
+    - Type and validation comparison
+    - Files: comparison_service.py, ComparePage.jsx
+
+FEATURE 4: CONFIDENCE SCORING
+    - Weighted aggregation: Classification (30%) + Extraction (40%) + Validation (30%)
+    - Per-stage breakdown with individual scores
+    - Letter grade (A/B/C/D/F) assignment
+    - Files: confidence_service.py, confidence endpoint
+
+FEATURE 5: PDF REPORT GENERATION
+    - Branded Documind PDF reports via fpdf2
+    - 9 sections: metadata, classification, OCR text, fields, validation,
+      anomaly, duplicates, AI analysis, summary
+    - Unicode-safe text rendering
+    - Files: report_service.py, report endpoint
+
+FEATURE 6: DOCKER CONTAINERIZATION
+    - Backend: python:3.12-slim + Tesseract + poppler
+    - Frontend: Multi-stage Node 20 build -> nginx Alpine
+    - Docker Compose: PostgreSQL 16 + backend + frontend
+    - Named volumes for data persistence
+    - Files: Dockerfile (x2), nginx.conf, docker-compose.yml
+
+FEATURE 7: TESTING & DOCUMENTATION
+    - 17 unit tests (BatchService, OCRCorrection, models)
+    - Thread safety tests for batch processing
+    - README.md with full documentation
+    - This PROJECT_DOCUMENTATION.txt file
+
+FILES CREATED:
+    backend/
+        app/services/batch_service.py
+        app/services/ocr_correction_service.py
+        app/services/comparison_service.py
+        app/services/confidence_service.py
+        app/services/report_service.py
+        app/schemas/comparison.py
+        app/schemas/confidence.py
+        tests/test_phase13.py
+        Dockerfile
+    frontend/
+        src/pages/ComparePage.jsx
+        src/pages/ComparePage.css
+        Dockerfile
+        nginx.conf
+    docker-compose.yml
+    .env.docker
+
+
+================================================================================
+5. API REFERENCE
+================================================================================
+
+BASE URL: http://localhost:8000/api/documents
+
+DOCUMENT MANAGEMENT:
+    POST   /upload                   Upload single document
+    POST   /upload/batch             Upload batch (up to 20 files)
+    GET    /                         List all documents
+    GET    /{id}                     Get document details
+    DELETE /{id}                     Delete document
+    POST   /{id}/process             Trigger processing pipeline
+
+ANALYSIS RETRIEVAL:
+    GET    /{id}/analysis            Full analysis results
+    GET    /{id}/content             Extracted text (all pages)
+    GET    /{id}/validation          Validation rule results
+    GET    /{id}/duplicates          Duplicate matches
+    GET    /{id}/anomaly             Anomaly detection result
+    GET    /{id}/confidence          Confidence score breakdown
+
+INTELLIGENCE:
+    POST   /{id}/qa                  Q&A on single document
+    POST   /qa                       Q&A across all documents
+    POST   /compare                  Compare two documents
+    GET    /{id}/report              Download PDF report
+
+BATCH:
+    GET    /batch/{id}/status        Poll batch processing status
+
+SYSTEM:
+    GET    /health                   Health check
+    GET    /ai/status                AI configuration status
+    POST   /ai/config               Update Groq API key
+
+
+================================================================================
+6. DATABASE SCHEMA
+================================================================================
+
+TABLE: documents
+    document_id              UUID PRIMARY KEY
+    filename                 VARCHAR(255) NOT NULL
+    original_filename        VARCHAR(255)
+    file_type                VARCHAR(50) NOT NULL
+    file_size                INTEGER NOT NULL
+    file_path                VARCHAR(512) NOT NULL
+    status                   ENUM (uploaded, processing, completed, failed)
+    document_type            VARCHAR(100)
+    classification_confidence FLOAT
+    classified_at            TIMESTAMP
+    created_at               TIMESTAMP DEFAULT NOW()
+    updated_at               TIMESTAMP
+
+TABLE: document_contents
+    id                       SERIAL PRIMARY KEY
+    document_id              UUID FK -> documents
+    page_number              INTEGER NOT NULL
+    raw_text                 TEXT
+    cleaned_text             TEXT
+    created_at               TIMESTAMP DEFAULT NOW()
+
+TABLE: extraction_results
+    id                       SERIAL PRIMARY KEY
+    document_id              UUID FK -> documents (UNIQUE)
+    extracted_fields         JSONB
+    extracted_at             TIMESTAMP DEFAULT NOW()
+
+TABLE: validation_results
+    id                       SERIAL PRIMARY KEY
+    document_id              UUID FK -> documents (UNIQUE)
+    status                   VARCHAR(20)
+    rule_results             JSONB
+    validated_at             TIMESTAMP DEFAULT NOW()
+
+TABLE: anomaly_results
+    id                       SERIAL PRIMARY KEY
+    document_id              UUID FK -> documents (UNIQUE)
+    is_anomaly               BOOLEAN
+    anomaly_score            FLOAT
+    decision_function_score  FLOAT
+    feature_vector           JSONB
+    created_at               TIMESTAMP DEFAULT NOW()
+
+TABLE: duplicate_results
+    id                       SERIAL PRIMARY KEY
+    document_id              UUID FK -> documents
+    matched_document_id      UUID
+    similarity_score         FLOAT
+    duplicate_type           VARCHAR(20) (EXACT, NEAR, PARTIAL)
+    created_at               TIMESTAMP DEFAULT NOW()
+
+
+================================================================================
+7. FRONTEND PAGES & COMPONENTS
+================================================================================
+
+PAGES:
+    DashboardPage.jsx       — Analytics dashboard with stats, charts, tables
+    UploadPage.jsx          — Single + batch file upload with drag-and-drop
+    DocumentsPage.jsx       — Document list with search, filter, sort
+    DocumentDetailPage.jsx  — Full analysis view (7 tabs)
+    QAPage.jsx              — Chat-style RAG Q&A interface
+    ComparePage.jsx         — Side-by-side document comparison
+
+COMPONENTS:
+    Layout.jsx              — App shell with sidebar navigation
+    StatusBadge.jsx         — Color-coded status indicators
+    LoadingSpinner.jsx      — Animated loading states
+    ErrorMessage.jsx        — Error display with retry
+    EmptyState.jsx          — Empty data illustrations
+
+SERVICES:
+    api.js                  — Axios-based API client (all endpoints)
+
+
+================================================================================
+8. DEPLOYMENT
+================================================================================
+
+DEVELOPMENT:
+    Backend:    cd backend && uvicorn app.main:app --reload
+    Frontend:   cd frontend && npm run dev
+
+DOCKER (Production):
+    docker-compose up --build -d
+
+    Services:
+        nexora-db       — PostgreSQL 16 (port 5432)
+        nexora-backend  — FastAPI + Tesseract (port 8000)
+        nexora-frontend — Nginx + React build (port 80)
+
+ENVIRONMENT VARIABLES:
+    DATABASE_URL            PostgreSQL connection string
+    GROQ_API_KEY            Groq AI API key (optional)
+    GROQ_MODEL              LLM model name
+    TESSERACT_CMD           Path to Tesseract binary
+    UPLOAD_DIR              File upload directory
+    MAX_FILE_SIZE           Max upload size (bytes)
+    ANOMALY_CONTAMINATION   Isolation Forest contamination factor
+    DEBUG                   Enable debug mode
+
+
+================================================================================
+9. TESTING
+================================================================================
+
+TEST SUITE:
+    tests/test_phase13.py           — 17 tests
+
+    TestBatchService (8 tests):
+        - test_singleton
+        - test_create_batch
+        - test_update_item_status
+        - test_batch_completion
+        - test_batch_partial_failure
+        - test_get_batch_status_dict
+        - test_nonexistent_batch
+        - test_thread_safety
+
+    TestOCRCorrectionService (6 tests):
+        - test_empty_text
+        - test_short_text_passthrough
+        - test_rule_based_rn_correction
+        - test_rule_based_total1_correction
+        - test_excessive_whitespace
+        - test_garbled_punctuation
+
+    TestBatchModels (3 tests):
+        - test_batch_item_to_dict
+        - test_batch_progress_empty
+        - test_batch_to_dict
+
+RUN TESTS:
+    cd backend
+    python -m pytest tests/ -v
+
+
+================================================================================
+10. FUTURE ENHANCEMENTS
+================================================================================
+
+PLANNED:
+    - LayoutLMv3 integration for layout-aware field extraction
+    - Redis-backed batch processing for distributed deployments
+    - Webhook notifications for batch completion
+    - Multi-language OCR support
+    - Document versioning and audit trail
+    - Role-based access control (RBAC)
+    - Real-time WebSocket processing updates
+    - Custom validation rule builder (UI)
+    - Export to CSV/Excel
+    - Bulk re-processing pipeline
+    - GPU-accelerated ML inference
+    - Cloud storage integration (S3, GCS)
+
+
+================================================================================
+                          END OF DOCUMENTATION
+================================================================================
