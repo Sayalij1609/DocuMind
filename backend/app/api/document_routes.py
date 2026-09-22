@@ -1485,7 +1485,7 @@ async def download_document_report(
         headers={
             "Content-Disposition": (
                 f"attachment; filename="
-                f"nexora-report-{document_id[:8]}.pdf"
+                f"Documind-Report-{document_id[:8]}.pdf"
             ),
         },
     )

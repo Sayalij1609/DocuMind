@@ -1,88 +1,66 @@
 """
-PDF Report Generation Service.
+Documind - Professional PDF Report Generator.
 
-Generates professional PDF reports for processed documents
-using fpdf2. Each report includes:
-  - Document metadata
-  - Classification result
-  - Extracted fields
-  - Validation results
-  - Anomaly detection
-  - Duplicate check
-  - Confidence scores
+Clean, single-flow PDF with branded header on page 1,
+content starting immediately. No cover page, no TOC.
 """
 
-import io
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.services.document_repository import (
-    DocumentRepository,
-)
-from app.services.extraction_result_repository import (
-    ExtractionResultRepository,
-)
-from app.services.validation_result_repository import (
-    ValidationResultRepository,
-)
-from app.services.document_content_repository import (
-    DocumentContentRepository,
-)
-from app.services.anomaly_result_repository import (
-    AnomalyResultRepository,
-)
-from app.services.duplicate_result_repository import (
-    DuplicateResultRepository,
-)
+from app.services.document_repository import DocumentRepository
+from app.services.extraction_result_repository import ExtractionResultRepository
+from app.services.validation_result_repository import ValidationResultRepository
+from app.services.document_content_repository import DocumentContentRepository
+from app.services.anomaly_result_repository import AnomalyResultRepository
+from app.services.duplicate_result_repository import DuplicateResultRepository
 
 logger = logging.getLogger(__name__)
 
-# Brand colors
-COLOR_PRIMARY = (37, 99, 235)
-COLOR_DARK = (15, 23, 42)
-COLOR_GRAY = (100, 116, 139)
-COLOR_LIGHT_BG = (248, 250, 252)
-COLOR_SUCCESS = (22, 163, 74)
-COLOR_ERROR = (220, 38, 38)
-COLOR_WARNING = (234, 179, 8)
-COLOR_WHITE = (255, 255, 255)
+# Colors
+C_PRIMARY = (37, 99, 235)
+C_DARK = (15, 23, 42)
+C_GRAY = (100, 116, 139)
+C_LGRAY = (203, 213, 225)
+C_BG = (248, 250, 252)
+C_BLUE_BG = (239, 246, 255)
+C_GREEN = (22, 163, 74)
+C_RED = (220, 38, 38)
+C_YELLOW = (180, 140, 8)
+C_WHITE = (255, 255, 255)
+C_GREEN_BG = (240, 253, 244)
+C_RED_BG = (254, 242, 242)
+C_YELLOW_BG = (254, 252, 232)
+
+
+def _safe(text) -> str:
+    if text is None:
+        return ""
+    s = str(text)
+    for old, new in {
+        "\u2014": "-", "\u2013": "-", "\u2018": "'", "\u2019": "'",
+        "\u201c": '"', "\u201d": '"', "\u2022": "*", "\u2026": "...",
+        "\u00a0": " ", "\u20b9": "Rs.", "\u20ac": "EUR", "\u00a3": "GBP",
+        "\u2265": ">=", "\u2264": "<=", "\u2192": "->", "\u2713": "[Y]",
+        "\u2717": "[X]", "\u00b7": ".", "\u00d7": "x",
+    }.items():
+        s = s.replace(old, new)
+    return s.encode("latin-1", errors="replace").decode("latin-1")
+
+
+def _fmt_bytes(size) -> str:
+    if not size:
+        return "0 B"
+    if size < 1024:
+        return f"{size} B"
+    if size < 1048576:
+        return f"{size / 1024:.1f} KB"
+    return f"{size / 1048576:.1f} MB"
 
 
 class ReportService:
-    """Generate PDF reports for document analysis results."""
-
-    @staticmethod
-    def _safe_text(text) -> str:
-        """Sanitize text for latin-1 compatible PDF fonts."""
-        if text is None:
-            return ""
-        s = str(text)
-        # Replace common Unicode with ASCII equivalents
-        replacements = {
-            "\u2014": "-",   # em dash
-            "\u2013": "-",   # en dash
-            "\u2018": "'",   # left single quote
-            "\u2019": "'",   # right single quote
-            "\u201c": '"',   # left double quote
-            "\u201d": '"',   # right double quote
-            "\u2022": "*",   # bullet
-            "\u2026": "...", # ellipsis
-            "\u00a0": " ",   # non-breaking space
-            "\u20b9": "Rs.", # rupee sign
-            "\u20ac": "EUR", # euro sign
-            "\u00a3": "GBP", # pound sign
-            "\u2265": ">=",  # greater than or equal
-            "\u2264": "<=",  # less than or equal
-        }
-        for old, new in replacements.items():
-            s = s.replace(old, new)
-        # Strip any remaining non-latin-1 characters
-        s = s.encode("latin-1", errors="replace").decode("latin-1")
-        return s
-
     def __init__(self, db: Session):
         self.db = db
         self.doc_repo = DocumentRepository(db)
@@ -92,442 +70,500 @@ class ReportService:
         self.anomaly_repo = AnomalyResultRepository(db)
         self.dup_repo = DuplicateResultRepository(db)
 
-    def generate_pdf(
-        self,
-        document_id: str,
-    ) -> bytes:
-        """
-        Generate a full PDF report for a document.
-
-        Returns:
-            PDF file as bytes.
-
-        Raises:
-            ValueError: If document not found.
-        """
+    def generate_pdf(self, document_id: str) -> bytes:
         from fpdf import FPDF
 
         doc = self.doc_repo.get_by_id(document_id)
         if not doc:
             raise ValueError("Document not found")
 
-        pdf = FPDF()
-        pdf.set_auto_page_break(auto=True, margin=20)
+        # Gather data
+        content_rec = self.content_repo.get_by_document_id(document_id)
+        ext_rec = self.ext_repo.get_by_document_id(document_id)
+        val_rec = self.val_repo.get_by_document_id(document_id)
+        anomaly_rec = self.anomaly_repo.get_by_document_id(document_id)
+        dup_matches = self.dup_repo.get_by_document_id(document_id)
+        ai_analysis = self.doc_repo.get_ai_analysis(document_id)
+
+        real_fields = {}
+        if ext_rec and ext_rec.extracted_fields:
+            real_fields = {
+                k: v for k, v in ext_rec.extracted_fields.items()
+                if not k.startswith("__")
+            }
+
+        # PDF with auto footer
+        class PDF(FPDF):
+            def footer(fpdf):
+                fpdf.set_y(-12)
+                fpdf.set_font("Helvetica", "I", 7)
+                fpdf.set_text_color(*C_GRAY)
+                fpdf.cell(95, 5, "Documind - Confidential", align="L")
+                fpdf.cell(95, 5, f"Page {fpdf.page_no()}/{{nb}}", align="R")
+
+        pdf = PDF()
+        pdf.alias_nb_pages()
+        pdf.set_auto_page_break(auto=True, margin=18)
         pdf.add_page()
 
-        # ── Title / Header ──
-        self._draw_header(pdf, doc)
-
-        # ── Document Metadata ──
-        self._draw_section_title(pdf, "Document Information")
-        self._draw_metadata_table(pdf, doc)
-
-        # ── Classification ──
-        self._draw_section_title(pdf, "Classification")
-        self._draw_classification(pdf, doc)
-
-        # ── Extracted Fields ──
-        ext_rec = self.ext_repo.get_by_document_id(
-            document_id
-        )
-        if ext_rec and ext_rec.extracted_fields:
-            self._draw_section_title(
-                pdf, "Extracted Fields"
-            )
-            self._draw_extraction(pdf, ext_rec)
-
-        # ── Validation ──
-        val_rec = self.val_repo.get_by_document_id(
-            document_id
-        )
-        if val_rec and val_rec.rule_results:
-            self._draw_section_title(
-                pdf, "Validation Results"
-            )
-            self._draw_validation(pdf, val_rec)
-
-        # ── Anomaly Detection ──
-        anomaly_rec = (
-            self.anomaly_repo.get_by_document_id(
-                document_id
-            )
-        )
-        if anomaly_rec:
-            self._draw_section_title(
-                pdf, "Anomaly Detection"
-            )
-            self._draw_anomaly(pdf, anomaly_rec)
-
-        # ── Duplicate Check ──
-        dup_matches = (
-            self.dup_repo.get_by_document_id(
-                document_id
-            )
-        )
-        if dup_matches:
-            self._draw_section_title(
-                pdf, "Duplicate Check"
-            )
-            self._draw_duplicates(pdf, dup_matches)
-
-        # ── AI Analysis Summary ──
-        ai_analysis = self.doc_repo.get_ai_analysis(
-            document_id
-        )
-        if ai_analysis:
-            self._draw_section_title(
-                pdf, "AI Analysis Summary"
-            )
-            self._draw_ai_summary(pdf, ai_analysis)
-
-        # ── Footer ──
-        self._draw_footer(pdf)
-
-        return bytes(pdf.output())
-
-    # ── Drawing Helpers ──
-
-    def _draw_header(self, pdf, doc):
-        """Draw report title and branding."""
-        # Blue header bar
-        pdf.set_fill_color(*COLOR_PRIMARY)
-        pdf.rect(10, 10, 190, 28, "F")
-
-        pdf.set_text_color(*COLOR_WHITE)
-        pdf.set_font("Helvetica", "B", 18)
-        pdf.set_xy(16, 14)
-        pdf.cell(0, 10, "NEXORA", new_x="LMARGIN")
-
-        pdf.set_font("Helvetica", "", 10)
-        pdf.set_xy(16, 24)
-        pdf.cell(
-            0, 8,
-            "Document Analysis Report",
-            new_x="LMARGIN",
-        )
-
-        # Right side: date
+        # ── BRANDED HEADER (compact, on page 1) ──
+        pdf.set_fill_color(*C_PRIMARY)
+        pdf.rect(0, 0, 210, 36, "F")
+        pdf.set_text_color(*C_WHITE)
+        pdf.set_font("Helvetica", "B", 20)
+        pdf.set_xy(12, 6)
+        pdf.cell(0, 10, "DOCUMIND")
         pdf.set_font("Helvetica", "", 9)
-        pdf.set_xy(140, 14)
+        pdf.set_xy(12, 17)
+        pdf.cell(0, 6, "Document Intelligence Report")
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_xy(12, 25)
         now = datetime.now(timezone.utc)
-        pdf.cell(
-            54, 10,
-            f"Generated: {now.strftime('%Y-%m-%d %H:%M UTC')}",
-            align="R",
-        )
+        pdf.cell(0, 6, _safe(f"{doc.filename}  |  {now.strftime('%B %d, %Y %H:%M UTC')}"))
+        pdf.set_text_color(*C_DARK)
+        pdf.set_y(42)
 
-        pdf.set_text_color(*COLOR_DARK)
-        pdf.set_y(44)
-
-    def _draw_section_title(self, pdf, title: str):
-        """Draw a section heading."""
-        if pdf.get_y() > 260:
-            pdf.add_page()
-
-        pdf.ln(6)
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.set_text_color(*COLOR_PRIMARY)
-        pdf.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
-
-        # Underline
-        pdf.set_draw_color(*COLOR_PRIMARY)
-        pdf.set_line_width(0.5)
-        y = pdf.get_y()
-        pdf.line(10, y, 200, y)
-        pdf.ln(4)
-        pdf.set_text_color(*COLOR_DARK)
-
-    def _draw_kv_row(
-        self, pdf, key: str, value: str,
-        alt: bool = False
-    ):
-        """Draw a key-value row."""
-        if alt:
-            pdf.set_fill_color(*COLOR_LIGHT_BG)
-        else:
-            pdf.set_fill_color(*COLOR_WHITE)
-
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_text_color(*COLOR_GRAY)
-        pdf.cell(
-            55, 7, key, fill=True,
-        )
-        pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(*COLOR_DARK)
-
-        # Truncate long values
-        display_val = self._safe_text(str(value)[:100]) if value else "-"
-        pdf.cell(
-            135, 7, display_val, fill=True,
-            new_x="LMARGIN", new_y="NEXT",
-        )
-
-    def _draw_metadata_table(self, pdf, doc):
-        """Draw document metadata."""
-        rows = [
+        # ── 1. DOCUMENT INFO ──
+        self._heading(pdf, "Document Information")
+        self._kv_table(pdf, [
             ("Document ID", doc.document_id),
             ("Filename", doc.filename),
             ("File Type", doc.file_type),
-            (
-                "File Size",
-                self._format_bytes(doc.file_size),
-            ),
+            ("File Size", _fmt_bytes(doc.file_size)),
             ("Status", doc.status.value if hasattr(doc.status, 'value') else str(doc.status)),
-            (
-                "Created",
-                (
-                    doc.created_at.strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                    if doc.created_at
-                    else "—"
-                ),
-            ),
-        ]
+            ("Uploaded", doc.created_at.strftime("%Y-%m-%d %H:%M:%S") if doc.created_at else "-"),
+        ])
+
+        # ── 2. CLASSIFICATION ──
+        self._heading(pdf, "Document Classification")
+        conf = f"{doc.classification_confidence * 100:.1f}%" if doc.classification_confidence else "-"
+        self._kv_table(pdf, [
+            ("Document Type", doc.document_type or "Unclassified"),
+            ("Confidence", conf),
+            ("Classified At", doc.classified_at.strftime("%Y-%m-%d %H:%M:%S") if doc.classified_at else "-"),
+        ])
+
+        # ── 3. OCR TEXT ──
+        if content_rec and content_rec.cleaned_text:
+            self._heading(pdf, "Extracted Text Content")
+            self._text_block(pdf, content_rec.cleaned_text)
+
+        # ── 4. EXTRACTED FIELDS ──
+        self._heading(pdf, "Extracted Data Fields")
+        if real_fields:
+            self._fields_table(pdf, real_fields)
+        else:
+            self._info_note(pdf, "No structured fields were extracted from this document.")
+
+        # ── 5. VALIDATION ──
+        self._heading(pdf, "Validation Audit")
+        if val_rec and val_rec.rule_results:
+            self._validation(pdf, val_rec)
+        else:
+            self._info_note(pdf, "No validation rules were executed.")
+
+        # ── 6. ANOMALY ──
+        self._heading(pdf, "Anomaly Detection")
+        if anomaly_rec:
+            self._anomaly(pdf, anomaly_rec)
+        else:
+            self._info_note(pdf, "Anomaly detection requires at least 5 documents in the repository.")
+
+        # ── 7. DUPLICATES ──
+        self._heading(pdf, "Duplicate Detection")
+        if dup_matches and len(dup_matches) > 0:
+            self._duplicates(pdf, dup_matches)
+        else:
+            self._info_note(pdf, "No duplicates found. This document is unique.")
+
+        # ── 8. AI ANALYSIS ──
+        self._heading(pdf, "AI Semantic Analysis")
+        if ai_analysis:
+            self._ai(pdf, ai_analysis)
+        else:
+            self._info_note(pdf, "AI analysis not performed. Configure Groq API key to enable.")
+
+        # ── 9. SUMMARY ──
+        self._heading(pdf, "Executive Summary")
+        self._summary(pdf, doc, content_rec, real_fields, val_rec, anomaly_rec, dup_matches, ai_analysis)
+
+        return bytes(pdf.output())
+
+    # ═══════════════════════════════════════
+    # BUILDING BLOCKS
+    # ═══════════════════════════════════════
+
+    def _heading(self, pdf, title):
+        if pdf.get_y() > 255:
+            pdf.add_page()
+        pdf.ln(5)
+        y = pdf.get_y()
+        pdf.set_fill_color(*C_PRIMARY)
+        pdf.rect(10, y, 190, 8, "F")
+        pdf.set_text_color(*C_WHITE)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_xy(14, y + 1)
+        pdf.cell(0, 6, _safe(title))
+        pdf.set_text_color(*C_DARK)
+        pdf.set_y(y + 11)
+
+    def _kv_table(self, pdf, rows):
+        pdf.set_draw_color(*C_LGRAY)
         for i, (k, v) in enumerate(rows):
-            self._draw_kv_row(pdf, k, v, alt=i % 2 == 0)
+            if pdf.get_y() > 272:
+                pdf.add_page()
+            pdf.set_fill_color(*(C_BLUE_BG if i % 2 == 0 else C_WHITE))
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.set_text_color(*C_GRAY)
+            pdf.cell(50, 7, _safe(f"  {k}"), border=1, fill=True)
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(*C_DARK)
+            pdf.cell(140, 7, _safe(f"  {str(v)[:110]}"), border=1, fill=True,
+                     new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
 
-    def _draw_classification(self, pdf, doc):
-        """Draw classification results."""
-        rows = [
-            (
-                "Document Type",
-                doc.document_type or "Not classified",
-            ),
-            (
-                "Confidence",
-                (
-                    f"{doc.classification_confidence:.4f}"
-                    if doc.classification_confidence
-                    else "—"
-                ),
-            ),
-            (
-                "Classified At",
-                (
-                    doc.classified_at.strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                    if doc.classified_at
-                    else "—"
-                ),
-            ),
-        ]
-        for i, (k, v) in enumerate(rows):
-            self._draw_kv_row(pdf, k, v, alt=i % 2 == 0)
+    def _info_note(self, pdf, msg):
+        pdf.set_fill_color(*C_BLUE_BG)
+        pdf.set_draw_color(*C_PRIMARY)
+        y = pdf.get_y()
+        pdf.rect(10, y, 190, 9, "DF")
+        pdf.set_font("Helvetica", "I", 8)
+        pdf.set_text_color(*C_GRAY)
+        pdf.set_xy(14, y + 1.5)
+        pdf.cell(0, 6, _safe(msg))
+        pdf.set_y(y + 12)
+        pdf.set_text_color(*C_DARK)
 
-    def _draw_extraction(self, pdf, ext_rec):
-        """Draw extracted fields table."""
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_fill_color(*COLOR_PRIMARY)
-        pdf.set_text_color(*COLOR_WHITE)
-        pdf.cell(55, 7, "Field", fill=True)
-        pdf.cell(80, 7, "Value", fill=True)
-        pdf.cell(
-            55, 7, "Confidence", fill=True,
-            new_x="LMARGIN", new_y="NEXT",
-        )
-        pdf.set_text_color(*COLOR_DARK)
+    def _text_block(self, pdf, text):
+        show = text[:3500]
+        if len(text) > 3500:
+            show += "\n\n[... truncated ...]"
+        pdf.set_fill_color(*C_BG)
+        pdf.set_draw_color(*C_LGRAY)
+        pdf.set_font("Courier", "", 6.5)
+        pdf.set_text_color(*C_DARK)
+        pdf.multi_cell(190, 3.2, _safe(show), border=1, fill=True)
+        wc = len(text.split())
+        pdf.set_font("Helvetica", "I", 7)
+        pdf.set_text_color(*C_GRAY)
+        pdf.cell(0, 5, f"  {len(text):,} characters | {wc:,} words", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(*C_DARK)
+        pdf.ln(2)
 
-        fields = ext_rec.extracted_fields or {}
+    def _fields_table(self, pdf, fields):
+        # Header
+        pdf.set_draw_color(*C_LGRAY)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_fill_color(*C_PRIMARY)
+        pdf.set_text_color(*C_WHITE)
+        pdf.cell(50, 7, "  Field", border=1, fill=True)
+        pdf.cell(95, 7, "  Value", border=1, fill=True)
+        pdf.cell(45, 7, "  Confidence", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(*C_DARK)
+
         for i, (name, fd) in enumerate(fields.items()):
             if pdf.get_y() > 270:
                 pdf.add_page()
-
-            alt = i % 2 == 0
-            if alt:
-                pdf.set_fill_color(*COLOR_LIGHT_BG)
-            else:
-                pdf.set_fill_color(*COLOR_WHITE)
-
-            val = "-"
-            conf = "-"
+            pdf.set_fill_color(*(C_BLUE_BG if i % 2 == 0 else C_WHITE))
+            val, conf = "-", "-"
             if isinstance(fd, dict):
-                val = self._safe_text(str(fd.get("value", "-"))[:60])
+                val = _safe(str(fd.get("value", "-"))[:70])
                 c = fd.get("confidence")
                 if c is not None:
-                    conf = f"{float(c):.4f}"
+                    conf = f"{float(c) * 100:.1f}%"
+            elif fd is not None:
+                val = _safe(str(fd)[:70])
 
-            pdf.set_font("Helvetica", "B", 8)
-            pdf.cell(55, 7, self._safe_text(name), fill=True)
-            pdf.set_font("Helvetica", "", 8)
-            pdf.cell(80, 7, val, fill=True)
-            pdf.cell(
-                55, 7, conf, fill=True,
-                new_x="LMARGIN", new_y="NEXT",
-            )
+            pdf.set_font("Helvetica", "B", 7.5)
+            pdf.cell(50, 6.5, _safe(f"  {name}"), border=1, fill=True)
+            pdf.set_font("Helvetica", "", 7.5)
+            pdf.cell(95, 6.5, f"  {val}", border=1, fill=True)
 
-    def _draw_validation(self, pdf, val_rec):
-        """Draw validation results."""
+            # Color confidence
+            if conf != "-":
+                cv = float(conf.replace("%", ""))
+                if cv >= 80:
+                    pdf.set_text_color(*C_GREEN)
+                elif cv >= 50:
+                    pdf.set_text_color(*C_YELLOW)
+                else:
+                    pdf.set_text_color(*C_RED)
+            pdf.set_font("Helvetica", "B", 7.5)
+            pdf.cell(45, 6.5, f"  {conf}", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(*C_DARK)
+        pdf.ln(2)
+
+    def _validation(self, pdf, val_rec):
         rules = val_rec.rule_results or []
-        passed = sum(
-            1 for r in rules
-            if r.get("status") == "PASS"
-        )
-        failed = sum(
-            1 for r in rules
-            if r.get("status") == "FAIL"
-        )
+        passed = sum(1 for r in rules if r.get("status") == "PASS")
+        failed = sum(1 for r in rules if r.get("status") == "FAIL")
+        status = val_rec.status or "Unknown"
 
-        self._draw_kv_row(
-            pdf, "Status",
-            val_rec.status or "Unknown",
-            alt=True,
-        )
-        self._draw_kv_row(
-            pdf, "Rules Passed",
-            str(passed),
-        )
-        self._draw_kv_row(
-            pdf, "Rules Failed",
-            str(failed),
-            alt=True,
-        )
+        # Status banner
+        if status == "VALID":
+            bg, tc = C_GREEN_BG, C_GREEN
+        elif status == "INVALID":
+            bg, tc = C_RED_BG, C_RED
+        else:
+            bg, tc = C_YELLOW_BG, C_YELLOW
 
-        pdf.ln(3)
+        y = pdf.get_y()
+        pdf.set_fill_color(*bg)
+        pdf.set_draw_color(*tc)
+        pdf.rect(10, y, 190, 9, "DF")
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*tc)
+        pdf.set_xy(14, y + 1.5)
+        pdf.cell(0, 6, _safe(f"{status}  -  {passed} Passed  |  {failed} Failed  |  {len(rules)} Total"))
+        pdf.set_y(y + 12)
+        pdf.set_text_color(*C_DARK)
 
-        # Rule detail table
-        if rules:
-            pdf.set_font("Helvetica", "B", 8)
-            pdf.set_fill_color(*COLOR_PRIMARY)
-            pdf.set_text_color(*COLOR_WHITE)
-            pdf.cell(70, 7, "Rule", fill=True)
-            pdf.cell(25, 7, "Status", fill=True)
-            pdf.cell(
-                95, 7, "Message", fill=True,
-                new_x="LMARGIN", new_y="NEXT",
-            )
-            pdf.set_text_color(*COLOR_DARK)
+        if not rules:
+            return
 
-            for i, r in enumerate(rules[:20]):
-                if pdf.get_y() > 270:
-                    pdf.add_page()
+        # Rules table
+        pdf.set_draw_color(*C_LGRAY)
+        pdf.set_font("Helvetica", "B", 7.5)
+        pdf.set_fill_color(*C_PRIMARY)
+        pdf.set_text_color(*C_WHITE)
+        pdf.cell(60, 7, "  Rule", border=1, fill=True)
+        pdf.cell(22, 7, "  Status", border=1, fill=True)
+        pdf.cell(108, 7, "  Message", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(*C_DARK)
 
-                alt = i % 2 == 0
-                if alt:
-                    pdf.set_fill_color(*COLOR_LIGHT_BG)
-                else:
-                    pdf.set_fill_color(*COLOR_WHITE)
+        for i, r in enumerate(rules):
+            if pdf.get_y() > 270:
+                pdf.add_page()
+            pdf.set_fill_color(*(C_BLUE_BG if i % 2 == 0 else C_WHITE))
+            rs = r.get("status", "-")
+            rn = _safe(str(r.get("rule_name", "-"))[:33])
+            rm = _safe(str(r.get("message", ""))[:68])
 
-                status = r.get("status", "-")
-                pdf.set_font("Helvetica", "", 8)
-                pdf.cell(
-                    70, 7,
-                    self._safe_text(str(r.get("rule_name", "-"))[:40]),
-                    fill=True,
-                )
+            pdf.set_font("Helvetica", "", 7.5)
+            pdf.cell(60, 6.5, f"  {rn}", border=1, fill=True)
 
-                if status == "PASS":
-                    pdf.set_text_color(*COLOR_SUCCESS)
-                elif status == "FAIL":
-                    pdf.set_text_color(*COLOR_ERROR)
-                else:
-                    pdf.set_text_color(*COLOR_WARNING)
+            if rs == "PASS":
+                pdf.set_text_color(*C_GREEN)
+            elif rs == "FAIL":
+                pdf.set_text_color(*C_RED)
+            else:
+                pdf.set_text_color(*C_YELLOW)
+            pdf.set_font("Helvetica", "B", 7.5)
+            pdf.cell(22, 6.5, f"  {rs}", border=1, fill=True)
 
-                pdf.set_font("Helvetica", "B", 8)
-                pdf.cell(25, 7, status, fill=True)
-                pdf.set_text_color(*COLOR_DARK)
-                pdf.set_font("Helvetica", "", 8)
-                pdf.cell(
-                    95, 7,
-                    self._safe_text(str(r.get("message", ""))[:55]),
-                    fill=True,
-                    new_x="LMARGIN", new_y="NEXT",
-                )
+            pdf.set_text_color(*C_DARK)
+            pdf.set_font("Helvetica", "", 7.5)
+            pdf.cell(108, 6.5, f"  {rm}", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
 
-    def _draw_anomaly(self, pdf, anomaly_rec):
-        """Draw anomaly detection results."""
-        is_anom = anomaly_rec.is_anomaly
-        self._draw_kv_row(
-            pdf, "Is Anomaly",
-            "Yes - Flagged" if is_anom else "No - Normal",
-            alt=True,
-        )
-        self._draw_kv_row(
-            pdf, "Anomaly Score",
-            f"{anomaly_rec.anomaly_score:.4f}",
-        )
-        self._draw_kv_row(
-            pdf, "Decision Score",
-            f"{anomaly_rec.decision_function_score:.4f}",
-            alt=True,
-        )
+    def _anomaly(self, pdf, rec):
+        is_a = rec.is_anomaly
+        if is_a:
+            bg, tc = C_RED_BG, C_RED
+            label = "ANOMALY DETECTED - Flagged as statistical outlier"
+        else:
+            bg, tc = C_GREEN_BG, C_GREEN
+            label = "NORMAL - No anomalies detected"
 
-    def _draw_duplicates(self, pdf, dup_matches):
-        """Draw duplicate detection results."""
-        self._draw_kv_row(
-            pdf, "Matches Found",
-            str(len(dup_matches)),
-            alt=True,
-        )
+        y = pdf.get_y()
+        pdf.set_fill_color(*bg)
+        pdf.set_draw_color(*tc)
+        pdf.rect(10, y, 190, 9, "DF")
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*tc)
+        pdf.set_xy(14, y + 1.5)
+        pdf.cell(0, 6, _safe(label))
+        pdf.set_y(y + 12)
+        pdf.set_text_color(*C_DARK)
 
-        for i, m in enumerate(dup_matches[:10]):
-            matched_id = (
-                m.matched_document_id
-                if hasattr(m, "matched_document_id")
-                else str(m)
-            )
-            score = (
-                f"{m.similarity_score:.4f}"
-                if hasattr(m, "similarity_score")
-                else "-"
-            )
-            dup_type = (
-                m.duplicate_type
-                if hasattr(m, "duplicate_type")
-                else "-"
-            )
-            self._draw_kv_row(
-                pdf,
-                f"Match {i + 1}",
-                self._safe_text(f"{matched_id[:24]}.. | {score} | {dup_type}"),
-                alt=i % 2 == 0,
-            )
+        self._kv_table(pdf, [
+            ("Anomaly Score", f"{rec.anomaly_score:.6f}"),
+            ("Decision Function", f"{rec.decision_function_score:.6f}"),
+            ("Result", "Outlier (Anomalous)" if is_a else "Inlier (Normal)"),
+        ])
 
-    def _draw_ai_summary(self, pdf, ai_analysis: dict):
-        """Draw AI analysis summary."""
-        summary = ai_analysis.get(
-            "executive_summary", ""
-        )
+        if is_a:
+            pdf.set_font("Helvetica", "I", 7.5)
+            pdf.set_text_color(*C_RED)
+            pdf.multi_cell(0, 3.5, _safe(
+                "Warning: Unusual patterns detected. Could indicate data entry errors, "
+                "fraudulent content, or an unusual but legitimate document. Manual review recommended."
+            ))
+            pdf.set_text_color(*C_DARK)
+            pdf.ln(2)
+
+    def _duplicates(self, pdf, matches):
+        pdf.set_draw_color(*C_LGRAY)
+        pdf.set_font("Helvetica", "B", 7.5)
+        pdf.set_fill_color(*C_PRIMARY)
+        pdf.set_text_color(*C_WHITE)
+        pdf.cell(75, 7, "  Matched Document", border=1, fill=True)
+        pdf.cell(30, 7, "  Similarity", border=1, fill=True)
+        pdf.cell(30, 7, "  Type", border=1, fill=True)
+        pdf.cell(55, 7, "  Risk", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(*C_DARK)
+
+        for i, m in enumerate(matches[:10]):
+            pdf.set_fill_color(*(C_BLUE_BG if i % 2 == 0 else C_WHITE))
+            mid = m.matched_document_id if hasattr(m, "matched_document_id") else str(m)
+            sc = f"{m.similarity_score:.1%}" if hasattr(m, "similarity_score") else "-"
+            dt = m.duplicate_type if hasattr(m, "duplicate_type") else "-"
+            risk = "HIGH" if dt == "EXACT" else ("MEDIUM" if dt == "NEAR" else "LOW")
+
+            pdf.set_font("Helvetica", "", 7.5)
+            pdf.cell(75, 6.5, _safe(f"  {mid[:30]}"), border=1, fill=True)
+            pdf.cell(30, 6.5, f"  {sc}", border=1, fill=True)
+            pdf.cell(30, 6.5, f"  {dt}", border=1, fill=True)
+
+            if risk == "HIGH":
+                pdf.set_text_color(*C_RED)
+            elif risk == "MEDIUM":
+                pdf.set_text_color(*C_YELLOW)
+            else:
+                pdf.set_text_color(*C_GREEN)
+            pdf.set_font("Helvetica", "B", 7.5)
+            pdf.cell(55, 6.5, f"  {risk}", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(*C_DARK)
+        pdf.ln(2)
+
+    def _ai(self, pdf, data):
+        method = data.get("analysis_method", "unknown")
+        self._kv_table(pdf, [("Analysis Method", method)])
+
+        # Summary
+        summary = data.get("executive_summary", "")
         if summary:
-            pdf.set_font("Helvetica", "", 9)
-            pdf.set_text_color(*COLOR_DARK)
-            pdf.multi_cell(
-                0, 5,
-                self._safe_text(str(summary)[:800]),
-            )
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(*C_PRIMARY)
+            pdf.cell(0, 6, "Summary", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(*C_DARK)
+            pdf.set_font("Helvetica", "", 8)
+            pdf.multi_cell(0, 4, _safe(str(summary)[:2000]))
             pdf.ln(3)
 
-        method = ai_analysis.get(
-            "analysis_method", "unknown"
-        )
-        self._draw_kv_row(
-            pdf, "Analysis Method",
-            method,
-            alt=True,
-        )
+        # Entities
+        entities = data.get("entities", {})
+        if entities and isinstance(entities, dict):
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(*C_PRIMARY)
+            pdf.cell(0, 6, "Identified Entities", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(*C_DARK)
 
-    def _draw_footer(self, pdf):
-        """Draw report footer."""
-        pdf.ln(10)
-        pdf.set_font("Helvetica", "I", 8)
-        pdf.set_text_color(*COLOR_GRAY)
-        pdf.cell(
-            0, 6,
-            (
-                "This report was auto-generated by "
-                "Nexora Document Intelligence Platform. "
-                "Confidential."
-            ),
-            new_x="LMARGIN", new_y="NEXT",
-            align="C",
-        )
+            for cat, vals in entities.items():
+                if not vals:
+                    continue
+                if pdf.get_y() > 260:
+                    pdf.add_page()
+                pdf.set_font("Helvetica", "B", 8)
+                pdf.cell(0, 5, _safe(f"  {cat.replace('_', ' ').title()}"), new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font("Helvetica", "", 7.5)
+                if isinstance(vals, dict):
+                    for k, v in vals.items():
+                        pdf.cell(0, 4.5, _safe(f"      {k}: {v}"), new_x="LMARGIN", new_y="NEXT")
+                elif isinstance(vals, list):
+                    for item in vals[:12]:
+                        pdf.cell(0, 4.5, _safe(f"      - {str(item)[:90]}"), new_x="LMARGIN", new_y="NEXT")
+                else:
+                    pdf.cell(0, 4.5, _safe(f"      {str(vals)[:150]}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(3)
 
-    @staticmethod
-    def _format_bytes(size: int) -> str:
-        """Format bytes to human-readable string."""
-        if size < 1024:
-            return f"{size} B"
-        if size < 1024 * 1024:
-            return f"{size / 1024:.1f} KB"
-        return f"{size / (1024 * 1024):.1f} MB"
+        # Line Items
+        items = data.get("line_items", [])
+        if items and isinstance(items, list) and len(items) > 0:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(*C_PRIMARY)
+            pdf.cell(0, 6, _safe(f"Line Items ({len(items)})"), new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(*C_DARK)
+
+            pdf.set_draw_color(*C_LGRAY)
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.set_fill_color(*C_PRIMARY)
+            pdf.set_text_color(*C_WHITE)
+            pdf.cell(10, 6, " #", border=1, fill=True)
+            pdf.cell(100, 6, "  Description", border=1, fill=True)
+            pdf.cell(25, 6, "  Qty", border=1, fill=True)
+            pdf.cell(55, 6, "  Amount", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(*C_DARK)
+
+            for idx, item in enumerate(items[:20]):
+                if pdf.get_y() > 270:
+                    pdf.add_page()
+                pdf.set_fill_color(*(C_BLUE_BG if idx % 2 == 0 else C_WHITE))
+                if isinstance(item, dict):
+                    desc = str(item.get("description", item.get("item", "-")))[:55]
+                    qty = str(item.get("quantity", "-"))
+                    amt = str(item.get("amount", item.get("total", "-")))
+                else:
+                    desc, qty, amt = str(item)[:55], "-", "-"
+
+                pdf.set_font("Helvetica", "", 7)
+                pdf.cell(10, 5.5, f" {idx+1}", border=1, fill=True)
+                pdf.cell(100, 5.5, _safe(f"  {desc}"), border=1, fill=True)
+                pdf.cell(25, 5.5, _safe(f"  {qty}"), border=1, fill=True)
+                pdf.cell(55, 5.5, _safe(f"  {amt}"), border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(3)
+
+        # Financial Validation
+        fv = data.get("financial_validation", {})
+        if fv and isinstance(fv, dict):
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(*C_PRIMARY)
+            pdf.cell(0, 6, "Financial Validation", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(*C_DARK)
+            self._kv_table(pdf, [(k, str(v)) for k, v in fv.items()])
+
+        # Risk
+        risk = data.get("risk_narrative", "")
+        if risk:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(*C_PRIMARY)
+            pdf.cell(0, 6, "Risk Assessment", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(*C_DARK)
+            pdf.set_font("Helvetica", "", 8)
+            pdf.multi_cell(0, 4, _safe(str(risk)[:1200]))
+            pdf.ln(2)
+
+    def _summary(self, pdf, doc, content_rec, fields, val_rec, anomaly_rec, dups, ai):
+        lines = []
+        lines.append(f"DOCUMENT: {doc.filename}")
+        lines.append(f"TYPE: {doc.document_type or 'Unclassified'}  |  SIZE: {_fmt_bytes(doc.file_size)}")
+        lines.append("")
+
+        if content_rec and content_rec.cleaned_text:
+            wc = len(content_rec.cleaned_text.split())
+            lines.append(f"TEXT: {wc:,} words extracted via OCR")
+
+        lines.append(f"FIELDS: {len(fields)} data field(s) identified")
+
+        if val_rec and val_rec.rule_results:
+            r = val_rec.rule_results
+            p = sum(1 for x in r if x.get("status") == "PASS")
+            lines.append(f"VALIDATION: {val_rec.status} ({p}/{len(r)} passed)")
+        else:
+            lines.append("VALIDATION: Not performed")
+
+        if anomaly_rec:
+            if anomaly_rec.is_anomaly:
+                lines.append(f"ANOMALY: FLAGGED (score {anomaly_rec.anomaly_score:.4f}) - Review recommended")
+            else:
+                lines.append(f"ANOMALY: Normal (score {anomaly_rec.anomaly_score:.4f})")
+        else:
+            lines.append("ANOMALY: Not checked")
+
+        if dups and len(dups) > 0:
+            lines.append(f"DUPLICATES: {len(dups)} match(es) found")
+        else:
+            lines.append("DUPLICATES: None - document is unique")
+
+        if ai:
+            lines.append(f"AI ANALYSIS: Completed ({ai.get('analysis_method', 'unknown')})")
+            s = ai.get("executive_summary", "")
+            if s:
+                lines.append(f"\n{str(s)[:500]}")
+
+        lines.append(f"\nGenerated: {datetime.now(timezone.utc).strftime('%B %d, %Y %H:%M UTC')}")
+        lines.append("Processed by Documind Document Intelligence Platform.")
+
+        pdf.set_font("Helvetica", "", 8.5)
+        pdf.set_text_color(*C_DARK)
+        pdf.multi_cell(0, 4.5, _safe("\n".join(lines)))

@@ -27,7 +27,7 @@ def build_grounded_rag_prompt(
       5. Explicitly citing document filenames and page numbers.
     """
     system_prompt = (
-        "You are Nexora, an enterprise document intelligence and question-answering assistant.\n"
+        "You are Documind, an enterprise document intelligence and question-answering assistant.\n"
         "Your task is to provide clear, beautifully structured, accurate answers based on the retrieved context.\n\n"
         "CORE INSTRUCTIONS:\n"
         "1. Structure your answers professionally using Markdown (bold highlights, clear bullet points, or markdown tables when listing items, bills, or figures).\n"

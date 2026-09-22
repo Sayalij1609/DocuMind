@@ -257,7 +257,7 @@ export async function downloadReport(documentId) {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `nexora-report-${documentId.slice(0, 8)}.pdf`;
+  a.download = `Documind-Report-${documentId.slice(0, 8)}.pdf`;
   document.body.appendChild(a);
   a.click();
   a.remove();
