@@ -56,3 +56,32 @@ class DocumentListResponse(BaseModel):
     page: int
 
     page_size: int
+
+
+class BatchItemStatusResponse(BaseModel):
+    document_id: str
+    filename: str
+    status: str
+    error: str | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
+
+
+class BatchUploadResponse(BaseModel):
+    message: str
+    batch_id: str
+    total: int
+    document_ids: list[str]
+
+
+class BatchStatusResponse(BaseModel):
+    batch_id: str
+    status: str
+    total: int
+    pending: int
+    processing: int
+    completed: int
+    failed: int
+    progress_percent: float
+    created_at: str
+    items: list[BatchItemStatusResponse]

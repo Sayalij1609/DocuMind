@@ -101,6 +101,53 @@ export async function uploadDocument(file, onProgress, autoProcess = false) {
   });
 }
 
+/* --- Batch Upload --- */
+
+export async function uploadBatch(files, onProgress) {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('files', file));
+
+  if (onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(data);
+          } else {
+            reject(new Error(data.detail || 'Batch upload failed'));
+          }
+        } catch {
+          reject(new Error('Batch upload failed — invalid response'));
+        }
+      });
+
+      xhr.addEventListener('error', () => reject(new Error('Batch upload failed — network error')));
+      xhr.addEventListener('abort', () => reject(new Error('Batch upload cancelled')));
+
+      xhr.open('POST', `${API_BASE_URL}/upload/batch`);
+      xhr.send(formData);
+    });
+  }
+
+  return request(`${API_BASE_URL}/upload/batch`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export async function getBatchStatus(batchId) {
+  return request(`${API_BASE_URL}/batch/${batchId}/status`);
+}
+
 /* --- Processing / Analysis Trigger --- */
 
 export async function startDocumentProcessing(documentId) {
@@ -181,4 +228,38 @@ export async function updateAIConfig(apiKey) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ api_key: apiKey }),
   });
+}
+
+/* --- Document Comparison --- */
+
+export async function compareDocuments(docIdA, docIdB) {
+  return request(`${API_BASE_URL}/compare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ doc_id_a: docIdA, doc_id_b: docIdB }),
+  });
+}
+
+/* --- Confidence Scores --- */
+
+export async function getDocumentConfidence(documentId) {
+  return request(`${API_BASE_URL}/${documentId}/confidence`);
+}
+
+/* --- PDF Report --- */
+
+export async function downloadReport(documentId) {
+  const response = await fetch(`${API_BASE_URL}/${documentId}/report`);
+  if (!response.ok) {
+    throw new Error(`Report download failed (${response.status})`);
+  }
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nexora-report-${documentId.slice(0, 8)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
 }

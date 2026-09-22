@@ -13,6 +13,7 @@ import {
   ChevronRight,
   FileCheck2,
   ArrowLeft,
+  GitCompare,
 } from 'lucide-react';
 import './Layout.css';
 
@@ -36,6 +37,7 @@ const navGroups = [
     items: [
       { to: '/anomalies', icon: AlertTriangle, label: 'Anomalies' },
       { to: '/duplicates', icon: Copy, label: 'Duplicates' },
+      { to: '/compare', icon: GitCompare, label: 'Compare' },
       { to: '/search', icon: Search, label: 'Search' },
       { to: '/qa', icon: MessageCircleQuestion, label: 'Q&A' },
     ],
@@ -48,6 +50,7 @@ const routeLabels = {
   '/documents': 'Document Repository',
   '/anomalies': 'Anomaly Detection',
   '/duplicates': 'Duplicate Analysis',
+  '/compare': 'Document Comparison',
   '/search': 'Deep Search',
   '/qa': 'Document Q&A',
 };

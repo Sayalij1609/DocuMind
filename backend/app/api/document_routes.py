@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import (
     APIRouter,
@@ -25,6 +25,8 @@ from app.core.config import settings
 from app.database.dependencies import get_db
 
 from app.schemas.document import (
+    BatchStatusResponse,
+    BatchUploadResponse,
     DocumentListResponse,
     DocumentResponse,
     DocumentUploadResponse
@@ -144,6 +146,21 @@ from app.services.ai_analysis_service import (
 )
 
 from app.rag.pipeline import get_rag_pipeline
+
+from app.services.batch_service import (
+    BatchItemStatus,
+    BatchService,
+    get_batch_service,
+)
+
+from app.schemas.comparison import (
+    ComparisonRequest,
+    ComparisonResponse,
+)
+
+from app.services.comparison_service import (
+    DocumentComparisonService,
+)
 
 
 router = APIRouter(
@@ -361,6 +378,176 @@ async def upload_document(
         "file_size": document.file_size,
         "status": document.status
     }
+
+
+# ==========================================
+# Batch Upload
+# ==========================================
+
+
+def _process_batch_item(
+    document_id: str,
+    batch_id: str,
+    batch_service: BatchService,
+    processing_service: DocumentProcessingService,
+):
+    """Process a single document within a batch, updating batch tracker."""
+    try:
+        batch_service.update_item_status(
+            batch_id, document_id, BatchItemStatus.PROCESSING
+        )
+        processing_service.process_document(document_id)
+        batch_service.update_item_status(
+            batch_id, document_id, BatchItemStatus.COMPLETED
+        )
+    except Exception as exc:
+        batch_service.update_item_status(
+            batch_id,
+            document_id,
+            BatchItemStatus.FAILED,
+            error=str(exc),
+        )
+
+
+@router.post(
+    "/upload/batch",
+    response_model=BatchUploadResponse,
+)
+async def upload_batch(
+    background_tasks: BackgroundTasks,
+    files: List[UploadFile] = File(...),
+    service: DocumentService = Depends(
+        get_document_service
+    ),
+    processing_service: DocumentProcessingService = Depends(
+        get_processing_service
+    ),
+):
+    """Upload multiple documents as a batch.
+
+    All documents are saved immediately and queued
+    for background processing. Returns a batch_id
+    for status polling.
+    """
+    if not files:
+        raise HTTPException(
+            status_code=400,
+            detail="No files provided.",
+        )
+
+    if len(files) > 20:
+        raise HTTPException(
+            status_code=400,
+            detail="Maximum 20 files per batch.",
+        )
+
+    saved_items = []
+
+    for file in files:
+        if not file.filename:
+            continue
+        try:
+            document = await service.save_document(file)
+            saved_items.append({
+                "document_id": document.document_id,
+                "filename": document.filename,
+            })
+        except ValueError as exc:
+            # Skip invalid files but continue
+            saved_items.append({
+                "document_id": "",
+                "filename": file.filename or "unknown",
+                "error": str(exc),
+            })
+
+    # Filter out failed uploads
+    valid_items = [
+        item for item in saved_items
+        if item["document_id"]
+    ]
+
+    if not valid_items:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid files in batch.",
+        )
+
+    batch_service = get_batch_service()
+    batch = batch_service.create_batch(valid_items)
+
+    # Queue each document for background processing
+    for item in valid_items:
+        background_tasks.add_task(
+            _process_batch_item,
+            item["document_id"],
+            batch.batch_id,
+            batch_service,
+            processing_service,
+        )
+
+    return BatchUploadResponse(
+        message=f"Batch created with {len(valid_items)} documents",
+        batch_id=batch.batch_id,
+        total=len(valid_items),
+        document_ids=[
+            item["document_id"]
+            for item in valid_items
+        ],
+    )
+
+
+@router.get(
+    "/batch/{batch_id}/status",
+    response_model=BatchStatusResponse,
+)
+async def get_batch_status(
+    batch_id: str,
+):
+    """Get processing status for a batch upload."""
+    batch_service = get_batch_service()
+    status = batch_service.get_batch_status(batch_id)
+
+    if status is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Batch not found.",
+        )
+
+    return BatchStatusResponse(**status)
+
+
+# ==========================================
+# Document Comparison
+# ==========================================
+
+
+@router.post(
+    "/compare",
+    response_model=ComparisonResponse,
+)
+async def compare_documents(
+    body: ComparisonRequest,
+    db: Session = Depends(get_db),
+):
+    """Compare two documents side-by-side.
+
+    Returns field-level diffs, similarity score,
+    type match, and validation status comparison.
+    """
+    service = DocumentComparisonService(db)
+
+    try:
+        result = service.compare(
+            doc_id_a=body.doc_id_a,
+            doc_id_b=body.doc_id_b,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    return result
 
 
 @router.get(
@@ -1204,6 +1391,104 @@ async def train_anomaly_model(
     )
 
     return AnomalyTrainResponse(**result)
+
+
+# ==========================================
+# Confidence Scores
+# ==========================================
+
+
+@router.get(
+    "/{document_id}/confidence",
+)
+async def get_document_confidence(
+    document_id: str,
+    db: Session = Depends(get_db),
+    service: DocumentService = Depends(
+        get_document_service
+    ),
+):
+    """Get aggregated confidence scores for a document."""
+
+    document = service.get_document(document_id)
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found",
+        )
+
+    from app.services.confidence_service import (
+        ConfidenceService,
+    )
+
+    confidence_service = ConfidenceService(db)
+
+    try:
+        result = confidence_service.compute(
+            document_id
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    return result
+
+
+# ==========================================
+# PDF Report Generation
+# ==========================================
+
+
+@router.get(
+    "/{document_id}/report",
+)
+async def download_document_report(
+    document_id: str,
+    db: Session = Depends(get_db),
+    service: DocumentService = Depends(
+        get_document_service
+    ),
+):
+    """Generate and download a PDF report for a document."""
+    from starlette.responses import Response
+
+    document = service.get_document(document_id)
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found",
+        )
+
+    from app.services.report_service import (
+        ReportService,
+    )
+
+    report_service = ReportService(db)
+
+    try:
+        pdf_bytes = report_service.generate_pdf(
+            document_id
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename="
+                f"nexora-report-{document_id[:8]}.pdf"
+            ),
+        },
+    )
 
 
 # ==========================================

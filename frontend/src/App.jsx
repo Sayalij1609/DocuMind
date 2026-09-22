@@ -10,6 +10,7 @@ import AnomaliesPage from './pages/AnomaliesPage';
 import DuplicatesPage from './pages/DuplicatesPage';
 import SearchPage from './pages/SearchPage';
 import QAPage from './pages/QAPage';
+import ComparePage from './pages/ComparePage';
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/documents/:id" element={<DocumentDetailPage />} />
           <Route path="/anomalies" element={<AnomaliesPage />} />
           <Route path="/duplicates" element={<DuplicatesPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/qa" element={<QAPage />} />
         </Route>

@@ -40,6 +40,11 @@ from app.services.ai_analysis_service import (
     get_ai_service,
 )
 
+from app.services.ocr_correction_service import (
+    OCRCorrectionService,
+    get_ocr_correction_service,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +75,9 @@ class DocumentProcessingService:
         ] = None,
         ai_analysis_service: Optional[
             AIAnalysisService
+        ] = None,
+        ocr_correction_service: Optional[
+            OCRCorrectionService
         ] = None,
     ):
 
@@ -104,6 +112,11 @@ class DocumentProcessingService:
         self.ai_analysis_service = (
             ai_analysis_service
             or get_ai_service()
+        )
+
+        self.ocr_correction_service = (
+            ocr_correction_service
+            or get_ocr_correction_service()
         )
 
     def process_document(
@@ -143,13 +156,22 @@ class DocumentProcessingService:
             )
 
             # --------------------------------
+            # OCR Post-Processing Correction
+            # --------------------------------
+
+            cleaned_text = content.cleaned_text or ""
+            corrected_text = self._correct_ocr(
+                cleaned_text
+            )
+
+            # --------------------------------
             # Classification (non-blocking)
             # --------------------------------
 
             classification_result = (
                 self._classify_document(
                     document_id,
-                    content.cleaned_text
+                    corrected_text
                 )
             )
 
@@ -164,7 +186,7 @@ class DocumentProcessingService:
                     self._extract_document(
                         document_id,
                         classification_result.document_type,
-                        content.cleaned_text
+                        corrected_text
                     )
                 )
 
@@ -205,7 +227,7 @@ class DocumentProcessingService:
 
             self._run_ai_analysis(
                 document_id,
-                content.cleaned_text,
+                corrected_text,
                 (
                     classification_result.document_type
                     if classification_result
@@ -226,7 +248,7 @@ class DocumentProcessingService:
                     else "unknown"
                 ),
                 document.filename or "",
-                content.cleaned_text or "",
+                corrected_text or "",
                 extraction_result,
             )
 
@@ -520,6 +542,31 @@ class DocumentProcessingService:
                 "document %s (non-blocking)",
                 document_id
             )
+
+    def _correct_ocr(
+        self,
+        raw_text: str,
+    ) -> str:
+        """
+        Run OCR post-processing correction.
+
+        This is non-blocking: if correction fails,
+        the original text is returned unchanged.
+        """
+        if self.ocr_correction_service is None:
+            return raw_text
+
+        try:
+            return (
+                self.ocr_correction_service
+                .correct_text(raw_text)
+            )
+        except Exception:
+            logger.exception(
+                "OCR correction failed "
+                "(non-blocking, using original)"
+            )
+            return raw_text
 
     def _run_ai_analysis(
         self,
