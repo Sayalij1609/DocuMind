@@ -1,4 +1,4 @@
-# Nexora — Intelligent Document Processing Platform
+# Documind — Intelligent Document Processing Platform
 
 > Enterprise-grade document intelligence: OCR extraction, ML classification, field validation, anomaly detection, duplicate analysis, RAG-powered Q&A, and automated PDF reporting.
 
@@ -137,15 +137,14 @@ docker-compose up --build -d
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DATABASE_URL` | ✅ | — | PostgreSQL connection string |
-| `GROQ_API_KEY` | ❌ | — | Groq API key for AI analysis & OCR correction |
-| `GROQ_MODEL` | ❌ | `qwen/qwen3.8-27b` | LLM model identifier |
-| `TESSERACT_CMD` | ❌ | `tesseract` | Path to Tesseract binary |
-| `UPLOAD_DIR` | ❌ | `uploads` | Directory for uploaded files |
-| `MAX_FILE_SIZE` | ❌ | `10485760` | Max upload size in bytes (10 MB) |
-| `LAYOUTLM_ENABLED` | ❌ | `false` | Enable LayoutLMv3 analysis |
-| `ANOMALY_CONTAMINATION` | ❌ | `0.05` | Isolation Forest contamination factor |
-| `DEBUG` | ❌ | `true` | Enable debug logging |
+| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
+| `GROQ_API_KEY` | No | — | Groq API key for AI analysis & OCR correction |
+| `GROQ_MODEL` | No | `qwen/qwen3.8-27b` | LLM model identifier |
+| `TESSERACT_CMD` | No | `tesseract` | Path to Tesseract binary |
+| `UPLOAD_DIR` | No | `uploads` | Directory for uploaded files |
+| `MAX_FILE_SIZE` | No | `10485760` | Max upload size in bytes (10 MB) |
+| `ANOMALY_CONTAMINATION` | No | `0.05` | Isolation Forest contamination factor |
+| `DEBUG` | No | `true` | Enable debug logging |
 
 ---
 
@@ -197,7 +196,7 @@ docker-compose up --build -d
 ## Project Structure
 
 ```
-Nexora/
+Documind/
 ├── backend/
 │   ├── app/
 │   │   ├── api/            # FastAPI route handlers
