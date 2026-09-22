@@ -339,7 +339,7 @@ export default function QAPage() {
           {messages.length === 0 && (
             <div className="qa-chat-welcome">
               <Bot size={36} className="qa-welcome-icon" />
-              <h3>Nexora RAG Assistant</h3>
+              <h3>Documind RAG Assistant</h3>
               <p>
                 {selectedDocId === '__all__'
                   ? 'Ask questions across your entire document repository with grounded citations.'

@@ -31,6 +31,7 @@ import {
   Zap,
   Home,
   Search,
+  Download,
 } from 'lucide-react';
 import {
   getDocumentAnalysis,
@@ -42,6 +43,7 @@ import {
   getAIStatus,
   updateAIConfig,
   startDocumentProcessing,
+  downloadReport,
 } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -632,6 +634,34 @@ export default function DocumentDetailPage() {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Download Report Action Bar */}
+          <div className="report-action-bar">
+            <button
+              className="download-report-btn"
+              onClick={async () => {
+                try {
+                  const btn = document.querySelector('.download-report-btn');
+                  if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = 'Generating...';
+                  }
+                  await downloadReport(id);
+                  if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '';
+                  }
+                } catch (err) {
+                  alert('Report generation failed: ' + (err.message || 'Unknown error'));
+                  const btn = document.querySelector('.download-report-btn');
+                  if (btn) btn.disabled = false;
+                }
+              }}
+            >
+              <Download size={16} />
+              Download PDF Report
+            </button>
           </div>
 
           {/* Tabs Navigation */}

@@ -300,11 +300,11 @@ export default function UploadPage() {
       <div className="upload-info">
         <div className="info-card card">
           <div className="pipeline-header">
-            <h4>Nexora Intelligent Processing Pipeline</h4>
+            <h4>Documind Intelligent Processing Pipeline</h4>
             <span className="pipeline-badge">6 Automated Audits</span>
           </div>
           <p className="pipeline-intro">
-            When you click <strong>Start Analysis</strong>, Nexora processes the document through an enterprise-grade extraction and compliance pipeline:
+            When you click <strong>Start Analysis</strong>, Documind processes the document through an enterprise-grade extraction and compliance pipeline:
           </p>
 
           <div className="pipeline-grid">

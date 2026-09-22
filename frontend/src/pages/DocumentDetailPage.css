@@ -608,6 +608,39 @@
   margin-bottom: var(--space-6);
 }
 
+/* Download Report Action Bar */
+.report-action-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-5);
+}
+
+.download-report-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  background: linear-gradient(135deg, #4f46e5, var(--accent-primary));
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.download-report-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
+}
+
+.download-report-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .health-tile {
   display: flex;
   align-items: flex-start;

@@ -54,6 +54,35 @@ COLOR_WHITE = (255, 255, 255)
 class ReportService:
     """Generate PDF reports for document analysis results."""
 
+    @staticmethod
+    def _safe_text(text) -> str:
+        """Sanitize text for latin-1 compatible PDF fonts."""
+        if text is None:
+            return ""
+        s = str(text)
+        # Replace common Unicode with ASCII equivalents
+        replacements = {
+            "\u2014": "-",   # em dash
+            "\u2013": "-",   # en dash
+            "\u2018": "'",   # left single quote
+            "\u2019": "'",   # right single quote
+            "\u201c": '"',   # left double quote
+            "\u201d": '"',   # right double quote
+            "\u2022": "*",   # bullet
+            "\u2026": "...", # ellipsis
+            "\u00a0": " ",   # non-breaking space
+            "\u20b9": "Rs.", # rupee sign
+            "\u20ac": "EUR", # euro sign
+            "\u00a3": "GBP", # pound sign
+            "\u2265": ">=",  # greater than or equal
+            "\u2264": "<=",  # less than or equal
+        }
+        for old, new in replacements.items():
+            s = s.replace(old, new)
+        # Strip any remaining non-latin-1 characters
+        s = s.encode("latin-1", errors="replace").decode("latin-1")
+        return s
+
     def __init__(self, db: Session):
         self.db = db
         self.doc_repo = DocumentRepository(db)
@@ -154,7 +183,7 @@ class ReportService:
         # ── Footer ──
         self._draw_footer(pdf)
 
-        return pdf.output()
+        return bytes(pdf.output())
 
     # ── Drawing Helpers ──
 
@@ -227,7 +256,7 @@ class ReportService:
         pdf.set_text_color(*COLOR_DARK)
 
         # Truncate long values
-        display_val = str(value)[:100] if value else "—"
+        display_val = self._safe_text(str(value)[:100]) if value else "-"
         pdf.cell(
             135, 7, display_val, fill=True,
             new_x="LMARGIN", new_y="NEXT",
@@ -311,16 +340,16 @@ class ReportService:
             else:
                 pdf.set_fill_color(*COLOR_WHITE)
 
-            val = "—"
-            conf = "—"
+            val = "-"
+            conf = "-"
             if isinstance(fd, dict):
-                val = str(fd.get("value", "—"))[:60]
+                val = self._safe_text(str(fd.get("value", "-"))[:60])
                 c = fd.get("confidence")
                 if c is not None:
                     conf = f"{float(c):.4f}"
 
             pdf.set_font("Helvetica", "B", 8)
-            pdf.cell(55, 7, name, fill=True)
+            pdf.cell(55, 7, self._safe_text(name), fill=True)
             pdf.set_font("Helvetica", "", 8)
             pdf.cell(80, 7, val, fill=True)
             pdf.cell(
@@ -380,11 +409,11 @@ class ReportService:
                 else:
                     pdf.set_fill_color(*COLOR_WHITE)
 
-                status = r.get("status", "—")
+                status = r.get("status", "-")
                 pdf.set_font("Helvetica", "", 8)
                 pdf.cell(
                     70, 7,
-                    str(r.get("rule_name", "—"))[:40],
+                    self._safe_text(str(r.get("rule_name", "-"))[:40]),
                     fill=True,
                 )
 
@@ -401,7 +430,7 @@ class ReportService:
                 pdf.set_font("Helvetica", "", 8)
                 pdf.cell(
                     95, 7,
-                    str(r.get("message", ""))[:55],
+                    self._safe_text(str(r.get("message", ""))[:55]),
                     fill=True,
                     new_x="LMARGIN", new_y="NEXT",
                 )
@@ -411,7 +440,7 @@ class ReportService:
         is_anom = anomaly_rec.is_anomaly
         self._draw_kv_row(
             pdf, "Is Anomaly",
-            "Yes — Flagged" if is_anom else "No — Normal",
+            "Yes - Flagged" if is_anom else "No - Normal",
             alt=True,
         )
         self._draw_kv_row(
@@ -441,17 +470,17 @@ class ReportService:
             score = (
                 f"{m.similarity_score:.4f}"
                 if hasattr(m, "similarity_score")
-                else "—"
+                else "-"
             )
             dup_type = (
                 m.duplicate_type
                 if hasattr(m, "duplicate_type")
-                else "—"
+                else "-"
             )
             self._draw_kv_row(
                 pdf,
                 f"Match {i + 1}",
-                f"{matched_id[:24]}… | {score} | {dup_type}",
+                self._safe_text(f"{matched_id[:24]}.. | {score} | {dup_type}"),
                 alt=i % 2 == 0,
             )
 
@@ -465,7 +494,7 @@ class ReportService:
             pdf.set_text_color(*COLOR_DARK)
             pdf.multi_cell(
                 0, 5,
-                str(summary)[:800],
+                self._safe_text(str(summary)[:800]),
             )
             pdf.ln(3)
 
