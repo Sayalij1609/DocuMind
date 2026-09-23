@@ -17,6 +17,11 @@ from app.validation.base import (
 )
 from app.validation.rules import (
     create_invoice_validation_rules,
+    create_bank_statement_validation_rules,
+    create_salary_slip_validation_rules,
+    create_utility_bill_validation_rules,
+    create_receipt_validation_rules,
+    create_general_financial_validation_rules,
 )
 from app.services.validation_result_repository import (
     ValidationResultRepository,
@@ -107,22 +112,19 @@ class ValidationService:
         self,
         document_type: str,
     ) -> Optional[ValidationEngine]:
-        """Create validation engine for a
-        document type.
+        """Create validation engine for a document type."""
+        if document_type in ["invoice", "commercial_invoice", "tax_invoice"]:
+            rules = create_invoice_validation_rules()
+        elif document_type == "bank_statement":
+            rules = create_bank_statement_validation_rules()
+        elif document_type == "salary_slip":
+            rules = create_salary_slip_validation_rules()
+        elif document_type == "utility_bill":
+            rules = create_utility_bill_validation_rules()
+        elif document_type == "receipt":
+            rules = create_receipt_validation_rules()
+        else:
+            rules = create_general_financial_validation_rules()
 
-        Args:
-            document_type: The document type.
+        return ValidationEngine(rules=rules)
 
-        Returns:
-            ValidationEngine or None.
-        """
-
-        if document_type == "invoice":
-
-            rules = (
-                create_invoice_validation_rules()
-            )
-
-            return ValidationEngine(rules=rules)
-
-        return None

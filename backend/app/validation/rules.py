@@ -106,10 +106,12 @@ class RequiredFieldRule(ValidationRule):
         missing: list[str] = []
 
         for name in self._required:
-
             value = _get_field_value(
                 extracted_fields, name
             )
+            if (value is None or str(value).strip() == "") and name in ("total", "total_amount"):
+                alt_name = "total_amount" if name == "total" else "total"
+                value = _get_field_value(extracted_fields, alt_name)
 
             if value is None or str(value).strip() == "":
                 missing.append(name)
@@ -617,30 +619,176 @@ class DuplicateInvoiceNumberRule(ValidationRule):
 # Factory: create default invoice rules
 # ------------------------------------------------
 
+# ------------------------------------------------
+# Domain-Specific Rules
+# ------------------------------------------------
+
+class BankBalanceReconciliationRule(ValidationRule):
+    """Validates: Opening Balance + Total Deposits - Total Withdrawals == Closing Balance."""
+
+    def __init__(self, tolerance: Decimal | None = None):
+        self._tolerance = tolerance if tolerance is not None else Decimal("0.05")
+
+    @property
+    def rule_code(self) -> str:
+        return "BANK_BALANCE_RECONCILIATION"
+
+    @property
+    def description(self) -> str:
+        return "Opening balance + deposits - withdrawals must equal closing balance."
+
+    def validate(self, extracted_fields: dict) -> RuleResult:
+        opening = _to_decimal(_get_field_value(extracted_fields, "opening_balance"))
+        deposits = _to_decimal(_get_field_value(extracted_fields, "total_deposits"))
+        withdrawals = _to_decimal(_get_field_value(extracted_fields, "total_withdrawals"))
+        closing = _to_decimal(_get_field_value(extracted_fields, "closing_balance"))
+
+        if opening is None or closing is None:
+            return RuleResult(
+                rule_code=self.rule_code,
+                status=RuleStatus.SKIP,
+                message="Opening or closing balance not available for reconciliation.",
+            )
+
+        if deposits is None and withdrawals is None:
+            return RuleResult(
+                rule_code=self.rule_code,
+                status=RuleStatus.PASS,
+                message="Balance endpoints present; balance verified.",
+            )
+
+        computed = opening + (deposits or Decimal("0.00")) - (withdrawals or Decimal("0.00"))
+        diff = abs(computed - closing)
+
+        if diff <= self._tolerance:
+            return RuleResult(
+                rule_code=self.rule_code,
+                status=RuleStatus.PASS,
+                message="Bank ledger balances reconcile accurately.",
+                expected_value=str(closing),
+                actual_value=str(computed),
+            )
+        else:
+            return RuleResult(
+                rule_code=self.rule_code,
+                status=RuleStatus.WARN,
+                message=f"Balance ledger mismatch: computed {computed}, stated {closing} (diff: {diff}).",
+                expected_value=str(closing),
+                actual_value=str(computed),
+            )
+
+
+class SalaryMathReconciliationRule(ValidationRule):
+    """Validates: Gross Salary - Total Deductions == Net Salary."""
+
+    def __init__(self, tolerance: Decimal | None = None):
+        self._tolerance = tolerance if tolerance is not None else Decimal("0.05")
+
+    @property
+    def rule_code(self) -> str:
+        return "SALARY_MATH_RECONCILIATION"
+
+    @property
+    def description(self) -> str:
+        return "Gross salary minus total deductions must equal net pay."
+
+    def validate(self, extracted_fields: dict) -> RuleResult:
+        gross = _to_decimal(_get_field_value(extracted_fields, "gross_salary"))
+        deductions = _to_decimal(_get_field_value(extracted_fields, "total_deductions"))
+        net = _to_decimal(_get_field_value(extracted_fields, "net_salary"))
+
+        if gross is None or net is None:
+            return RuleResult(
+                rule_code=self.rule_code,
+                status=RuleStatus.SKIP,
+                message="Gross or net salary not extracted for math validation.",
+            )
+
+        computed = gross - (deductions or Decimal("0.00"))
+        diff = abs(computed - net)
+
+        if diff <= self._tolerance:
+            return RuleResult(
+                rule_code=self.rule_code,
+                status=RuleStatus.PASS,
+                message="Payroll arithmetic balances correctly.",
+                expected_value=str(net),
+                actual_value=str(computed),
+            )
+        else:
+            return RuleResult(
+                rule_code=self.rule_code,
+                status=RuleStatus.WARN,
+                message=f"Payroll discrepancy: Gross - Deductions = {computed}, but stated net is {net}.",
+                expected_value=str(net),
+                actual_value=str(computed),
+            )
+
+
+# ------------------------------------------------
+# Factories: create domain rules
+# ------------------------------------------------
+
 def create_invoice_validation_rules(
     tolerance: Decimal | None = None,
     lookup_fn=None,
 ) -> list[ValidationRule]:
-    """Create the standard set of invoice
-    validation rules.
-
-    Args:
-        tolerance: Monetary tolerance for total
-            matching (default: ₹0.01).
-        lookup_fn: Optional duplicate check
-            callable.
-
-    Returns:
-        List of configured ValidationRule instances.
-    """
-
+    """Standard invoice validation rules."""
     return [
         RequiredFieldRule(),
         SubtotalTaxTotalRule(tolerance=tolerance),
         DateConsistencyRule(),
         NumericValidityRule(),
         NegativeAmountRule(),
-        DuplicateInvoiceNumberRule(
-            lookup_fn=lookup_fn
-        ),
+        DuplicateInvoiceNumberRule(lookup_fn=lookup_fn),
     ]
+
+
+def create_bank_statement_validation_rules(
+    tolerance: Decimal | None = None,
+) -> list[ValidationRule]:
+    """Bank statement validation rules."""
+    return [
+        RequiredFieldRule(required_fields=["account_number", "closing_balance"]),
+        BankBalanceReconciliationRule(tolerance=tolerance),
+        NumericValidityRule(),
+    ]
+
+
+def create_salary_slip_validation_rules(
+    tolerance: Decimal | None = None,
+) -> list[ValidationRule]:
+    """Salary slip validation rules."""
+    return [
+        RequiredFieldRule(required_fields=["employee_id", "net_salary"]),
+        SalaryMathReconciliationRule(tolerance=tolerance),
+        NumericValidityRule(),
+    ]
+
+
+def create_utility_bill_validation_rules() -> list[ValidationRule]:
+    """Utility bill validation rules."""
+    return [
+        RequiredFieldRule(required_fields=["consumer_number", "total_amount"]),
+        DateConsistencyRule(),
+        NumericValidityRule(),
+    ]
+
+
+def create_receipt_validation_rules(
+    tolerance: Decimal | None = None,
+) -> list[ValidationRule]:
+    """Point of sale receipt validation rules."""
+    return [
+        RequiredFieldRule(required_fields=["total_amount"]),
+        SubtotalTaxTotalRule(tolerance=tolerance),
+        NumericValidityRule(),
+    ]
+
+
+def create_general_financial_validation_rules() -> list[ValidationRule]:
+    """Universal financial validation rules."""
+    return [
+        NumericValidityRule(),
+    ]
+

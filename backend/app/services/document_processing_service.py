@@ -609,6 +609,15 @@ class DocumentProcessingService:
                 ai_analysis=ai_result,
             )
 
+            # Reconcile classification if AI identified a concrete category
+            ai_doc_type = ai_result.get("document_type")
+            if ai_doc_type and self.classification_service and hasattr(self.classification_service, "update_from_ai"):
+                self.classification_service.update_from_ai(
+                    document_id=document_id,
+                    ai_detected_type=ai_doc_type,
+                    confidence=0.92,
+                )
+
             logger.info(
                 "Document %s AI analysis: "
                 "method=%s",

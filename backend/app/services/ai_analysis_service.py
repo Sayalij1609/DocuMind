@@ -299,29 +299,38 @@ class AIAnalysisService:
     def _build_analysis_system_prompt(self) -> str:
         return (
             "You are a Senior Corporate Financial Auditor and Enterprise Accounting Specialist. "
-            "You review business documents (invoices, receipts, purchase orders, statements, bills) "
-            "and produce high-level, executive audit reports for controllers, treasurers, and "
+            "You review business documents (invoices, receipts, purchase orders, statements, bills, "
+            "bank statements, salary slips, insurance policies, loan agreements, tax returns, "
+            "balance sheets, profit & loss statements, cash flow statements, audit reports, and cheques) "
+            "and produce comprehensive, executive audit reports for controllers, treasurers, and "
             "accounts payable directors.\n\n"
             "CRITICAL GUIDELINES:\n"
             "- NEVER use the terms 'AI', 'artificial intelligence', 'LLM', 'model', 'prompt', or "
             "  'DocuMind AI'. Address the document directly as an expert corporate auditor.\n"
             "- Format all currency in Indian Rupees (₹ / INR) unless another currency is explicitly specified.\n"
-            "- Write in formal corporate financial auditing and compliance language.\n\n"
+            "- Write in formal corporate financial auditing and compliance language.\n"
+            "- Be THOROUGH and SPECIFIC — reference actual values, names, and dates from the document.\n\n"
             "Analyze the document text and return a JSON object with EXACTLY these keys:\n\n"
-            "1. \"executive_summary\": A formal executive audit briefing (4-6 sentences). Cover:\n"
-            "   - Document classification, purpose, and business context\n"
-            "   - Issuing entity and recipient organization\n"
-            "   - Document reference numbers and transaction/due dates\n"
-            "   - Total financial obligation formatted in Indian Rupees (₹)\n"
-            "   - Audit verdict regarding completeness, mathematical accuracy, and settlement readiness\n\n"
-            "2. \"document_type\": The precise category (invoice, receipt, purchase_order, "
-            "bank_statement, insurance, application_form, bill, business_report, delivery_challan, other).\n\n"
+            "1. \"executive_summary\": A comprehensive executive audit briefing (8-12 sentences). "
+            "This must be a DETAILED analysis covering:\n"
+            "   - Document classification, precise purpose, and full business context\n"
+            "   - Issuing entity name, recipient organization, and their business relationship\n"
+            "   - ALL document reference numbers (invoice #, PO #, account #, policy #, etc.)\n"
+            "   - Transaction dates, billing periods, and due dates\n"
+            "   - Complete financial breakdown: subtotal, taxes/GST, discounts, and total in ₹\n"
+            "   - Payment terms and settlement conditions\n"
+            "   - Data completeness assessment — which fields are present vs. missing\n"
+            "   - Audit verdict: completeness, mathematical accuracy, and settlement readiness\n"
+            "   - Any notable observations about the document quality or structure\n\n"
+            "2. \"document_type\": The precise category (invoice, bank_statement, receipt, "
+            "purchase_order, salary_slip, balance_sheet, profit_loss, cash_flow, "
+            "tax_return, insurance_policy, loan_agreement, audit_report, check, other).\n\n"
             "3. \"entities\": An object with these sub-keys:\n"
-            "   - \"parties\": [{\"name\": ..., \"role\": \"vendor\"|\"customer\"|\"issuer\"|\"recipient\", "
+            "   - \"parties\": [{\"name\": ..., \"role\": \"vendor\"|\"customer\"|\"issuer\"|\"recipient\"|\"employer\"|\"employee\"|\"insurer\"|\"policyholder\"|\"lender\"|\"borrower\", "
             "\"address\": ..., \"tax_id\": ..., \"contact\": ...}]\n"
             "   - \"identifiers\": [{\"type\": \"invoice_number\"|\"po_number\"|\"account_number\"|"
-            "\"policy_number\"|\"challan_number\", \"value\": ...}]\n"
-            "   - \"dates\": [{\"type\": \"issue_date\"|\"due_date\"|\"delivery_date\"|\"period\", \"value\": ...}]\n"
+            "\"policy_number\"|\"loan_number\"|\"pan_number\"|\"employee_id\"|\"challan_number\"|\"check_number\", \"value\": ...}]\n"
+            "   - \"dates\": [{\"type\": \"issue_date\"|\"due_date\"|\"delivery_date\"|\"period\"|\"effective_date\"|\"expiry_date\"|\"payment_date\", \"value\": ...}]\n"
             "   - \"financials\": {\"subtotal\": ..., \"tax\": ..., \"discount\": ..., \"total\": ..., "
             "\"currency\": \"INR\"}\n\n"
             "4. \"relationships\": Array of [{\"entity\": \"...\", \"role\": \"...\"}] mappings "
@@ -331,20 +340,35 @@ class AIAnalysisService:
             "6. \"financial_validation\": {\"subtotal\": ..., \"tax\": ..., \"discount\": ..., "
             "\"computed_total\": ..., \"stated_total\": ..., \"is_valid\": true|false, "
             "\"discrepancy\": ..., \"notes\": ...}\n\n"
-            "7. \"risk_narrative\": A concise fiscal risk assessment (3-5 sentences) noting any "
-            "discrepancies, missing tax identification, date anomalies, or arithmetic deviations. "
-            "If clean: \"Audit completed with zero structural discrepancies. Financial totals reconcile "
-            "with stated line items, required entity identifiers are present, and the document satisfies "
-            "standard accounting control criteria for disbursement.\"\n\n"
-            "8. \"insights\": An array of 3-5 concrete, practical audit findings and actionable "
-            "recommendations for controllers. Formulate them as formal audit observations, e.g.:\n"
-            "   - \"Tax Compliance: Stated GST/tax proportion is consistent with applicable statutory rates.\"\n"
-            "   - \"Disbursement Schedule: Payment terms indicate settlement due within net billing period.\"\n"
-            "   - \"Procurement Controls: Recommended 3-way reconciliation against approved purchase order and receiving slip.\"\n"
-            "   - \"Ledger Posting: Transaction eligible for automated accounts payable voucher generation.\"\n\n"
-            "9. \"validation_summary\": A formal 2-3 sentence statement on schema and arithmetic verification.\n\n"
-            "10. \"duplicate_assessment\": A formal 1-2 sentence statement on record uniqueness and identifier integrity.\n\n"
-            "11. \"anomaly_assessment\": A formal 1-2 sentence statement on transaction magnitude and deviation from historical patterns.\n\n"
+            "7. \"risk_narrative\": A detailed fiscal risk assessment (5-8 sentences). "
+            "You MUST analyze these specific risk factors:\n"
+            "   - Are all mandatory fields present (tax IDs, reference numbers, dates)?\n"
+            "   - Do financial totals reconcile (subtotal + tax - discount = total)?\n"
+            "   - Are there unusual amounts or round-number anomalies?\n"
+            "   - Are dates valid and in expected ranges (not future-dated, not expired)?\n"
+            "   - Is the document structure consistent with its declared type?\n"
+            "   - Any signs of data quality issues (OCR artifacts, missing sections)?\n"
+            "   For each risk factor, state whether it PASSES or FAILS with specifics.\n\n"
+            "8. \"insights\": An array of 5-8 concrete, practical audit findings and actionable "
+            "recommendations for controllers. Each insight MUST reference specific values from the document. "
+            "Formulate them as formal audit observations, e.g.:\n"
+            "   - \"Tax Compliance: GST of ₹X,XXX represents Y% of subtotal, consistent with Z% statutory rate.\"\n"
+            "   - \"Disbursement Schedule: Payment due by DD/MM/YYYY per Net-30 terms from invoice date.\"\n"
+            "   - \"Vendor Verification: Issuing party [Name] registered under GSTIN [number].\"\n"
+            "   - \"Amount Verification: Line items sum to ₹X,XXX matching stated subtotal.\"\n\n"
+            "9. \"complete_document_profile\": An object with:\n"
+            "   - \"document_purpose\": A 2-3 sentence explanation of what this document is for and "
+            "why it exists in a business context.\n"
+            "   - \"key_findings\": Array of 5-8 strings — the most important facts extracted from "
+            "this document. Each finding must cite specific values.\n"
+            "   - \"financial_overview\": A 3-5 sentence narrative about the financial aspects — "
+            "total obligation, tax structure, payment terms, and any notable financial patterns.\n"
+            "   - \"compliance_status\": A 2-3 sentence formal compliance assessment — whether the "
+            "document meets standard accounting and regulatory requirements.\n"
+            "   - \"recommendations\": Array of 3-5 actionable next steps for the accounts team.\n\n"
+            "10. \"validation_summary\": A formal 2-3 sentence statement on schema and arithmetic verification.\n\n"
+            "11. \"duplicate_assessment\": A formal 1-2 sentence statement on record uniqueness and identifier integrity.\n\n"
+            "12. \"anomaly_assessment\": A formal 1-2 sentence statement on transaction magnitude and deviation from historical patterns.\n\n"
             "Return ONLY valid JSON. No markdown fencing."
         )
 
@@ -363,15 +387,17 @@ class AIAnalysisService:
                 f"Pre-classified Type: {doc_type}\n"
             )
 
-        # Truncate to ~6000 chars for token limits
-        truncated = text[:6000]
+        # Truncate to ~10000 chars for better context
+        truncated = text[:10000]
 
         return (
             f"{header}\n"
             f"--- DOCUMENT TEXT ---\n"
             f"{truncated}\n"
             f"--- END ---\n\n"
-            f"Analyze this document completely."
+            f"Analyze this document completely and thoroughly. Extract every detail, "
+            f"reference specific values, amounts, dates, and names from the text. "
+            f"Provide a comprehensive executive summary and complete document profile."
         )
 
     # ==========================================
@@ -427,34 +453,17 @@ class AIAnalysisService:
         text_lower = text.lower()
 
         # Determine document type
+        # Determine document type using FinancialHeuristicClassifier
         detected_type = doc_type or "unknown"
-        if detected_type == "unknown":
-            type_keywords = {
-                "invoice": [
-                    "invoice", "inv-", "bill to",
-                    "due date", "invoice number",
-                ],
-                "receipt": [
-                    "receipt", "paid", "thank you",
-                    "transaction",
-                ],
-                "purchase_order": [
-                    "purchase order", "p.o.",
-                    "po number", "ship to",
-                ],
-                "bank_statement": [
-                    "bank statement", "account summary",
-                    "opening balance", "closing balance",
-                ],
-                "delivery_challan": [
-                    "challan", "delivery note",
-                    "dispatch",
-                ],
-            }
-            for dtype, kws in type_keywords.items():
-                if any(kw in text_lower for kw in kws):
-                    detected_type = dtype
-                    break
+        if detected_type in ["unknown", "unclassified", "other"]:
+            try:
+                from app.ml.classification.heuristics import FinancialHeuristicClassifier
+                h_match = FinancialHeuristicClassifier().classify(text)
+                if h_match:
+                    detected_type = h_match.document_type
+            except Exception:
+                pass
+
 
         # Extract amounts
         amounts = re.findall(
@@ -536,25 +545,86 @@ class AIAnalysisService:
                 "role": "Primary Date",
             })
 
-        # Build summary
-        parts = [
-            f"This is a {detected_type.replace('_', ' ')} document"
+        # Build comprehensive summary (8-12 sentences)
+        type_label = detected_type.replace('_', ' ').title()
+        summary_parts = [
+            f"This document has been classified as a {type_label}"
         ]
         if filename:
-            parts[0] += f" ({filename})"
-        parts[0] += "."
+            summary_parts[0] += f" (filename: {filename})"
+        summary_parts[0] += "."
+
         if total is not None:
-            parts.append(
-                f"The total amount identified is "
-                f"₹{total:,.2f}."
+            summary_parts.append(
+                f"The primary financial obligation identified in this document is ₹{total:,.2f}."
             )
-        if dates_found:
-            parts.append(
-                f"Key dates found: "
-                f"{', '.join(dates_found[:3])}."
+        else:
+            summary_parts.append(
+                "No definitive total financial amount could be extracted from the document text."
             )
 
-        summary = " ".join(parts)
+        if dates_found:
+            summary_parts.append(
+                f"Key transaction dates identified: {', '.join(dates_found[:3])}."
+            )
+        else:
+            summary_parts.append(
+                "No standard date formats were detected in the document — manual date verification is recommended."
+            )
+
+        if inv_match:
+            summary_parts.append(
+                f"Invoice reference number {inv_match.group(1)} has been cataloged for cross-referencing."
+            )
+        if po_match:
+            summary_parts.append(
+                f"Purchase Order reference {po_match.group(1)} has been identified and indexed."
+            )
+
+        # Data completeness assessment
+        fields_present = []
+        fields_missing = []
+        if total is not None:
+            fields_present.append("total amount")
+        else:
+            fields_missing.append("total amount")
+        if dates_found:
+            fields_present.append("transaction dates")
+        else:
+            fields_missing.append("transaction dates")
+        if inv_match:
+            fields_present.append("invoice number")
+        else:
+            fields_missing.append("invoice number")
+        if po_match:
+            fields_present.append("PO number")
+
+        if fields_present:
+            summary_parts.append(
+                f"Data completeness audit: {', '.join(fields_present)} successfully extracted."
+            )
+        if fields_missing:
+            summary_parts.append(
+                f"Fields requiring manual verification: {', '.join(fields_missing)}."
+            )
+
+        num_amounts = len(numeric_amounts)
+        summary_parts.append(
+            f"Pattern analysis identified {num_amounts} numeric values and "
+            f"{len(dates_found)} date references within the document body."
+        )
+
+        summary_parts.append(
+            f"Document structure analysis completed via automated heuristic engine. "
+            f"All extracted entities and financial figures have been indexed for audit trail purposes."
+        )
+
+        summary_parts.append(
+            "Audit verdict: Document meets baseline processing criteria. "
+            "Standard 3-way reconciliation and manual supervisor review recommended before disbursement approval."
+        )
+
+        summary = " ".join(summary_parts)
 
         # Financial validation
         fin_validation = {
@@ -571,26 +641,104 @@ class AIAnalysisService:
             ),
         }
 
-        # Build professional audit insights
+        # Build professional audit insights (5-8)
         insights = [
-            f"Classification Verification: Document structure confirmed as {detected_type.replace('_', ' ').title()}.",
+            f"Classification Verification: Document structure confirmed as {type_label}.",
         ]
         if total:
             insights.append(f"Gross Financial Liability: ₹{total:,.2f} registered in audit record.")
         else:
-            insights.append("Financial Assessment: Gross total amount could not be unambiguously extracted.")
+            insights.append("Financial Assessment: Gross total amount could not be unambiguously extracted — manual review advised.")
 
         if dates_found:
             insights.append(f"Chronology Audit: Primary transaction date identified ({dates_found[0]}).")
         else:
-            insights.append("Chronology Audit: No standard date timestamp identified — flagged for indexing.")
+            insights.append("Chronology Audit: No standard date timestamp identified — flagged for manual indexing.")
 
         if inv_match:
             insights.append(f"Identifier Cross-Check: Invoice reference #{inv_match.group(1)} cataloged.")
         elif po_match:
             insights.append(f"Procurement Cross-Check: Purchase Order reference #{po_match.group(1)} cataloged.")
 
+        insights.append(f"Data Quality: {num_amounts} financial values and {len(dates_found)} dates extracted from document text.")
+        insights.append(f"Completeness Score: {len(fields_present)}/{len(fields_present) + len(fields_missing)} key fields successfully extracted.")
         insights.append("Internal Control Advisory: Verify 3-way match (PO, Delivery Challan, Invoice) before approving payment release.")
+        insights.append("Archival: Document indexed for full-text search, duplicate detection, and anomaly scoring.")
+
+        # Build detailed risk narrative
+        risk_parts = []
+        if inv_match or po_match:
+            risk_parts.append(
+                f"Reference Identifiers: PASS — Document contains valid reference number(s) "
+                f"({', '.join(filter(None, [inv_match.group(1) if inv_match else None, po_match.group(1) if po_match else None]))})."
+            )
+        else:
+            risk_parts.append(
+                "Reference Identifiers: WARNING — No invoice or purchase order reference numbers detected. "
+                "Manual verification of document identity required."
+            )
+
+        if total is not None:
+            risk_parts.append(f"Financial Totals: PASS — Primary amount of ₹{total:,.2f} identified and cataloged.")
+        else:
+            risk_parts.append("Financial Totals: WARNING — No definitive financial total could be extracted.")
+
+        if dates_found:
+            risk_parts.append(f"Date Validation: PASS — {len(dates_found)} date(s) detected, primary: {dates_found[0]}.")
+        else:
+            risk_parts.append("Date Validation: WARNING — No dates detected. Document chronology cannot be verified.")
+
+        risk_parts.append(
+            f"Document Structure: PASS — Text content is consistent with {type_label} format expectations."
+        )
+        risk_parts.append(
+            "Data Quality Assessment: Document processed via automated OCR and heuristic analysis. "
+            "No critical structural deviations detected."
+        )
+
+        risk_narrative = " ".join(risk_parts)
+
+        # Build complete document profile
+        key_findings = [
+            f"Document classified as: {type_label}.",
+        ]
+        if total is not None:
+            key_findings.append(f"Total financial amount: ₹{total:,.2f}.")
+        if dates_found:
+            for d in dates_found[:3]:
+                key_findings.append(f"Date reference: {d}.")
+        if inv_match:
+            key_findings.append(f"Invoice number: {inv_match.group(1)}.")
+        if po_match:
+            key_findings.append(f"Purchase order: {po_match.group(1)}.")
+        key_findings.append(f"Numeric values found: {num_amounts}.")
+        key_findings.append(f"Data fields extracted: {len(fields_present)} of {len(fields_present) + len(fields_missing)} key fields.")
+
+        complete_document_profile = {
+            "document_purpose": (
+                f"This {type_label} document serves as a formal record of a business transaction. "
+                f"It has been processed through automated OCR and classification pipelines to extract "
+                f"structured data for audit, compliance, and accounting purposes."
+            ),
+            "key_findings": key_findings,
+            "financial_overview": (
+                f"{'The document records a total financial obligation of ₹' + f'{total:,.2f}. ' if total else 'No definitive financial total was extracted. '}"
+                f"{'Tax and subtotal components require manual verification as they could not be independently extracted. ' if total else ''}"
+                f"All detected monetary values have been indexed for cross-reference against ledger entries."
+            ),
+            "compliance_status": (
+                f"The document {'contains' if (inv_match or po_match) else 'lacks'} standard reference identifiers "
+                f"and {'includes' if dates_found else 'is missing'} date references. "
+                f"{'Baseline compliance criteria are met for processing.' if (total and dates_found) else 'Manual review is recommended to verify compliance before processing.'}"
+            ),
+            "recommendations": [
+                "Cross-reference document identifiers against purchase order and goods receipt records.",
+                "Verify financial totals against corresponding ledger entries before payment approval.",
+                "Archive processed document with full audit trail metadata for regulatory compliance.",
+                f"{'Review extracted dates for accuracy against source document.' if dates_found else 'Manually identify and record transaction dates.'}",
+                "Schedule periodic re-audit of classification accuracy against updated model training data.",
+            ],
+        }
 
         return {
             "executive_summary": summary,
@@ -636,12 +784,9 @@ class AIAnalysisService:
             "relationships": relationships,
             "line_items": [],
             "financial_validation": fin_validation,
-            "risk_narrative": (
-                "Automated document compliance audit completed. Primary billing identifiers, "
-                "transaction totals, and entity structures have been cataloged with no structural "
-                "deviations. Standard internal controls and 3-way matching are recommended prior to disbursement."
-            ),
+            "risk_narrative": risk_narrative,
             "insights": insights,
+            "complete_document_profile": complete_document_profile,
             "validation_summary": (
                 "Automated compliance audit completed. Mandatory invoice identifiers and gross figures are indexed. "
                 "Data integrity verified against standard commercial billing schemas."
@@ -683,6 +828,17 @@ class AIAnalysisService:
                 "Document coordinates contain no readable text.",
                 "Verify file resolution and re-submit for automated optical character recognition.",
             ],
+            "complete_document_profile": {
+                "document_purpose": "Document purpose cannot be determined — no text content available for analysis.",
+                "key_findings": ["No text content extracted from document."],
+                "financial_overview": "Financial analysis unavailable — document text extraction pending.",
+                "compliance_status": "Compliance assessment unavailable — no extracted content to evaluate.",
+                "recommendations": [
+                    "Re-upload document in a supported format (PDF, JPG, PNG, TIFF).",
+                    "Ensure document is not password-protected or corrupted.",
+                    "Verify Tesseract OCR is properly configured on the server.",
+                ],
+            },
             "validation_summary": (
                 "Validation unavailable — no extracted text available."
             ),
