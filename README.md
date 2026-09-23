@@ -1,4 +1,4 @@
-# Nexora (Documind) — Intelligent Document Processing Platform
+# Documind : Intelligent Document Processing Platform
 
 > Enterprise-grade document intelligence: OCR extraction, ML classification, field validation, anomaly detection, duplicate analysis, RAG-powered Q&A, and automated PDF reporting.
 
