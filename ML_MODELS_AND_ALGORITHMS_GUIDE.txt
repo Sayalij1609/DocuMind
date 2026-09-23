@@ -1,0 +1,415 @@
+================================================================================
+          NEXORA / DOCUMIND — COMPLETE MACHINE LEARNING GUIDE
+       Models, Algorithms, Datasets, Feature Vectors, and Business Purpose
+================================================================================
+
+Date: September 2026
+Platform: Nexora / DocuMind Enterprise Intelligent Document Processing (IDP)
+Repository: Sayalij1609/Nexora
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. EXECUTIVE SUMMARY & MODEL OVERVIEW MATRIX
+2. MODEL 1: DOCUMENT CLASSIFIER (Supervised Text Classification)
+3. MODEL 2: ANOMALY & FRAUD DETECTOR (Unsupervised Machine Learning)
+4. MODEL 3: DUPLICATE & RE-BILLING DETECTOR (Vector Space Model)
+5. MODEL 4: LAYOUTLM VISUAL INFORMATION EXTRACTOR (Multimodal Transformer)
+6. MODEL 5: RAG SEMANTIC RETRIEVAL EMBEDDINGS (Dense Vector Model)
+7. MODEL 6: COGNITIVE AI REASONING ENGINE (Large Language Model)
+8. MODEL 7: OPTICAL CHARACTER RECOGNITION (Vision + Recurrent Neural Network)
+9. HOW DATA FLOWS BETWEEN MODELS (END-TO-END WORKFLOW)
+10. DATASET LOCATIONS & RETRAINING COMMANDS
+
+================================================================================
+1. EXECUTIVE SUMMARY & MODEL OVERVIEW MATRIX
+================================================================================
+
+Nexora / DocuMind operates an ensemble of 7 specialized ML/DL models:
+
++----+--------------------------+------------------------------+---------------------------+------------------------------------+
+| #  | ML Model                 | Algorithm / Architecture     | Dataset & Features        | Primary Purpose in Nexora          |
++----+--------------------------+------------------------------+---------------------------+------------------------------------+
+| 1  | Document Classifier      | TF-IDF (1-2 ngrams) +        | 2,490 labeled text files  | Automatically classifies document  |
+|    |                          | LogisticRegression / SGD     | (data/classification/)    | type to route to domain pipelines  |
++----+--------------------------+------------------------------+---------------------------+------------------------------------+
+| 2  | Document Anomaly         | Isolation Forest             | 4D Feature Vector:        | Detects fraud, data-entry errors,  |
+|    | Detector                 | (Tree Ensemble)              | [log(total), items,       | and extreme statistical outliers   |
+|    |                          |                              |  char_count, tax_ratio]   |                                    |
++----+--------------------------+------------------------------+---------------------------+------------------------------------+
+| 3  | Duplicate Document       | TF-IDF Vector Space +        | Live database records     | Identifies exact duplicates and    |
+|    | Detector                 | Cosine Similarity + SHA-256  | (document_contents)       | near-duplicate modified re-bills   |
++----+--------------------------+------------------------------+---------------------------+------------------------------------+
+| 4  | LayoutLM Visual          | Multimodal Transformer       | Tokens + 2D Bounding      | Extracts data from complex visual  |
+|    | Extractor                | (LayoutLMv3 base)            | Boxes [x0, y0, x1, y1]    | tables, grids, and receipt layouts |
++----+--------------------------+------------------------------+---------------------------+------------------------------------+
+| 5  | Semantic RAG             | Dense Sentence Transformer   | 500-token sliding text    | Powers interactive Document Q&A    |
+|    | Embeddings               | (all-MiniLM-L6-v2)           | chunks with 50-token overlap| by retrieving relevant paragraphs  |
++----+--------------------------+------------------------------+---------------------------+------------------------------------+
+| 6  | Cognitive AI             | Auto-regressive Transformer  | OCR text + Prompt Schema  | Synthesizes executive summaries,   |
+|    | Engine                   | (LLaMA-3.3-70B via Groq)     | with strict JSON decoding | parses entities, and audits risk   |
++----+--------------------------+------------------------------+---------------------------+------------------------------------+
+| 7  | Optical Character        | CNN + Bidirectional LSTM +   | Pre-trained character     | Converts raw PDF/image pixels into |
+|    | Recognition (OCR)        | CTC Loss (Tesseract 5)       | typography glyphs         | digital machine-readable text      |
++----+--------------------------+------------------------------+---------------------------+------------------------------------+
+
+
+================================================================================
+2. MODEL 1: DOCUMENT CLASSIFIER (Supervised Text Classification)
+================================================================================
+
+- Primary Code:
+    backend/app/ml/classification/trainer.py
+    backend/app/ml/classification/predictor.py
+    backend/app/ml/classification/metrics.py
+
+- Purpose:
+    When a user uploads a document, the platform must immediately determine its
+    category (Invoice, Purchase Order, Bank Statement, Salary Slip, Utility Bill,
+    or Other). This classification dictates which domain extractor, regex anchors,
+    and mathematical reconciliation rules will run downstream.
+
+- Algorithm:
+    1. Feature Extraction: TfidfVectorizer
+       - Tokenizes text into unigrams and bigrams (e.g., "tax", "tax invoice").
+       - Sublinear term frequency scaling: sublinear_tf=True (replaces TF with
+         1 + log(TF) to dampen the influence of overly repetitive words).
+       - Max features: 10,000 vocabulary words.
+       - Strips common English stop words.
+    2. Classification: Multi-Class Logistic Regression / SGDClassifier
+       - Uses L2 Ridge Regularization with the 'lbfgs' optimization solver.
+       - Softmax probability estimation:
+           P(y = k | x) = exp(w_k^T * x) / SUM_j(exp(w_j^T * x))
+       - Rejection Threshold: 0.50. If the highest class probability is under
+         0.50, the document is routed to the Tier-2 Heuristic Engine.
+
+- Dataset:
+    - Root: data/classification/
+    - Distribution:
+        * invoice/         : 830 sample documents
+        * purchase_order/  : 830 sample documents
+        * other/           : 830 sample documents
+        * Total            : 2,490 business documents
+    - Origin: Kaggle "Company Documents" dataset (data/company-document-text.csv).
+    - Train / Test Split: 80% train, 20% test (stratified sampling).
+
+- Evaluation Metrics:
+    - Accuracy: Overall correct predictions / total predictions.
+    - Macro Precision: TP / (TP + FP) averaged across all classes.
+    - Macro Recall: TP / (TP + FN) averaged across all classes.
+    - Macro F1-Score: 2 * (Precision * Recall) / (Precision + Recall).
+    - Confusion Matrix: N x N grid showing inter-class confusion.
+    - Stratified 5-Fold Cross-Validation: Evaluates model variance.
+
+
+================================================================================
+3. MODEL 2: ANOMALY & FRAUD DETECTOR (Unsupervised Machine Learning)
+================================================================================
+
+- Primary Code:
+    backend/app/anomaly/isolation_forest.py
+    backend/app/anomaly/features.py
+    backend/scripts/train_anomaly.py
+
+- Purpose:
+    Detects financial red flags, fraudulent invoices, billing irregularities,
+    and human data-entry errors (such as accidentally billing $1,000,000 instead
+    of $1,000, or an invoice with zero tax and an abnormally high total) before
+    payments are processed.
+
+- Algorithm:
+    - Isolation Forest (sklearn.ensemble.IsolationForest)
+    - Tree Count: n_estimators=100 trees.
+    - Contamination: 0.05 (5% target anomaly tolerance).
+    - Intuition: Traditional clustering models attempt to model "normal" data
+      points. Isolation Forest does the opposite: it isolates anomalies directly.
+      It constructs random decision trees by picking a feature at random and
+      splitting between the minimum and maximum values.
+      * Normal points reside in dense clusters and require many splits to isolate.
+      * Outliers/anomalies have extreme values and are isolated very near the
+        root of the tree (short average tree path length).
+    - Anomaly Scoring Formula:
+        s(x, n) = 2^(-E(h(x)) / c(n))
+        where E(h(x)) is the average path length of point x across all trees,
+        and c(n) is the average path length of unsuccessful searches in a BST.
+        * Score < 0.0  --> ANOMALY (Statistical Outlier, requires review)
+        * Score >= 0.0 --> NORMAL DOCUMENT (Inlier)
+
+- Dataset & Feature Vector:
+    The model does not train on raw text; it trains on a 4-dimensional continuous
+    numerical feature vector extracted from each document:
+      1. log10(Total Amount + 1.0) : Captures exponential financial scale.
+      2. Line Item Count           : Number of billed products/services.
+      3. Character Count           : Overall volume of document text.
+      4. Tax-to-Total Ratio        : Tax Amount / Total Amount (detects missing tax).
+    - Source: Extracted directly from database records or real invoices in
+      data/company-document-text.csv. Includes a synthetic baseline generator.
+
+- Evaluation Metrics:
+    - Anomaly Score (-1.0 to +1.0)
+    - Decision Function Score (continuous signed distance to boundary)
+    - Contamination Rate (0.05)
+    - False Positive Rate (FPR) on verified legitimate historical ledgers.
+
+
+================================================================================
+4. MODEL 3: DUPLICATE & RE-BILLING DETECTOR (Vector Space Model)
+================================================================================
+
+- Primary Code:
+    backend/app/dedup/service.py
+    backend/app/services/duplicate_result_repository.py
+
+- Purpose:
+    Protects organizations against duplicate billing fraud (e.g., a contractor
+    submitting the same invoice twice via different channels, or altering only
+    the date to claim double payment).
+
+- Algorithm:
+    1. Cryptographic Exact Match:
+       - Generates a SHA-256 binary hash of the raw file content.
+       - Allows O(1) instantaneous detection of identical uploaded files.
+    2. Vector Space Cosine Similarity:
+       - Transforms the document's cleaned text into a TF-IDF vector.
+       - Calculates the cosine angle against all historical documents:
+           Cosine Similarity(u, v) = (u . v) / (||u||_2 * ||v||_2)
+       - Score Ranges:
+           * >= 0.98         : EXACT DUPLICATE (High Risk - Flagged for auto-block)
+           * 0.85 to 0.979   : NEAR DUPLICATE  (Medium Risk - Revised bill warning)
+           * < 0.85          : UNIQUE DOCUMENT (Low Risk - Cleared)
+
+- Dataset:
+    - Operates dynamically on the entire active document corpus stored in the
+      PostgreSQL database (document_contents table).
+
+- Evaluation Metrics:
+    - Pairwise Cosine Similarity score [0.0 - 1.0].
+    - Duplicate Classification Precision & Recall at threshold 0.85.
+
+
+================================================================================
+5. MODEL 4: LAYOUTLM VISUAL INFORMATION EXTRACTOR (Multimodal Transformer)
+================================================================================
+
+- Primary Code:
+    backend/app/ml/layoutlm/trainer.py
+    backend/app/ml/layoutlm/inference.py
+    backend/app/ml/layoutlm/bbox_utils.py
+
+- Purpose:
+    Standard NLP models process text as a flat 1D stream of characters, ignoring
+    visual positioning. But financial documents convey crucial meaning through
+    2D layout (e.g., Grand Total located in the bottom-right corner, vendor in
+    the header box, line items aligned in tabular columns). LayoutLM reads text
+    and visual bounding boxes simultaneously.
+
+- Algorithm:
+    - Architecture: LayoutLMv3 (based on RoBERTa architecture).
+    - Multimodal Input Representation:
+      Each token input receives:
+        1. Text Token Embedding (Word representation).
+        2. 2D Spatial Coordinate Embedding:
+           Bounding box [x0, y0, x1, y1] normalized to an integer grid [0, 1000].
+        3. Visual Patch Embedding (from document image slice).
+    - Head: Sequence classification layer outputting BIO tags:
+        B-INVOICE_NUMBER, I-INVOICE_NUMBER,
+        B-TOTAL_AMOUNT,   I-TOTAL_AMOUNT,
+        B-INVOICE_DATE,   I-INVOICE_DATE,
+        B-VENDOR_NAME,    I-VENDOR_NAME
+
+- Dataset:
+    - Stored in data/annotations/
+    - JSON files containing word tokens, 2D coordinates [x0, y0, x1, y1], and
+      ground-truth entity labels.
+
+- Evaluation Metrics:
+    - Token Classification Accuracy.
+    - Cross-Entropy Loss over training epochs.
+    - Entity-Level Precision, Recall, and F1-Score (via seqeval library).
+    - Exact Match (EM) percentage.
+
+
+================================================================================
+6. MODEL 5: RAG SEMANTIC RETRIEVAL EMBEDDINGS (Dense Vector Model)
+================================================================================
+
+- Primary Code:
+    backend/app/rag/embeddings.py
+    backend/app/rag/chunking.py
+    backend/app/rag/vector_store.py
+
+- Purpose:
+    Powers the interactive Document Q&A / Chat assistant (/qa). When a user asks
+    complex natural language questions (e.g., "What is the warranty period?" or
+    "Is there any late payment penalty?"), this model searches semantic meaning
+    rather than exact keyword matches.
+
+- Algorithm:
+    - Model: sentence-transformers/all-MiniLM-L6-v2
+    - Architecture: 6-layer BERT Transformer optimized for fast inference.
+    - Output: 384-dimensional dense semantic vector space.
+    - Search: Computes dot-product cosine similarity between the user's query
+      vector and all indexed text chunks from the document.
+    - Fallback: Local TF-IDF sparse vectorizer if PyTorch is not available.
+
+- Dataset:
+    - The document text is segmented dynamically into 500-token chunks with
+      a 50-token sliding overlap to maintain boundary context.
+
+- Evaluation Metrics:
+    - Cosine Similarity score.
+    - Recall@K (Top-3 / Top-5 hit rate: whether the correct paragraph is
+      contained within the top retrieved chunks).
+    - Mean Reciprocal Rank (MRR).
+
+
+================================================================================
+7. MODEL 6: COGNITIVE AI REASONING ENGINE (Large Language Model)
+================================================================================
+
+- Primary Code:
+    backend/app/services/ai_analysis_service.py
+    backend/app/rag/llm.py
+
+- Purpose:
+    Acts as the high-level semantic reasoning brain of the system:
+      1. Generates concise, professional Executive Briefings.
+      2. Extracts unstructured entities (Vendor address, Buyer details).
+      3. Parses tabular line items into structured JSON rows.
+      4. Audits financial risks and compliance clauses.
+      5. Provides arbitration to auto-correct document classification.
+
+- Algorithm:
+    - Model: LLaMA-3.3-70B-Versatile via the Groq Cloud API.
+    - Architecture: 70-Billion Parameter Auto-Regressive Decoder Transformer
+      with Grouped-Query Attention (GQA).
+    - Hardware Acceleration: Groq Tensor Streaming Processor (LPU), executing
+      at ~250 - 350 tokens per second.
+    - Structured Decoding: Uses system prompts enforcing strict JSON Schema
+      validation to prevent hallucinations and malformed JSON.
+
+- Dataset:
+    - Pre-trained by Meta AI on massive open-source multilingual and financial
+      corpora. Provided with document-specific OCR text and accounting schemas
+      at runtime.
+
+- Evaluation Metrics:
+    - JSON Schema Compliance Rate (must be 100%).
+    - Hallucination / Factuality Grounding (extracted numbers must exist in OCR).
+    - Inference Latency and Token Throughput.
+
+
+================================================================================
+8. MODEL 7: OPTICAL CHARACTER RECOGNITION (Vision + Recurrent Neural Network)
+================================================================================
+
+- Primary Code:
+    backend/app/processing/ocr_engine.py
+    backend/app/processing/text_cleaner.py
+
+- Purpose:
+    Converts physical paper scans, photos (PNG, JPEG), and PDF pages into
+    machine-readable digital text tokens with character positions.
+
+- Algorithm:
+    - Engine: Google Tesseract OCR 5.x via pytesseract.
+    - Architecture:
+      1. Connected Component Analysis & Page Segmentation (PSM 3).
+      2. Convolutional Neural Network (CNN) feature extractor scanning text lines.
+      3. Bidirectional Long Short-Term Memory (Bi-LSTM) sequence model predicting
+         character sequences forwards and backwards.
+      4. Connectionist Temporal Classification (CTC) loss function.
+    - Post-Processing Normalizer: Cleans unicode artifacts, resolves currency
+      symbols (Rs., INR, ₹, $, EUR), and normalizes whitespace.
+
+- Dataset:
+    - Google Tesseract pre-trained model (eng.traineddata) trained on millions
+      of printed synthetic and real character glyphs across diverse fonts.
+
+- Evaluation Metrics:
+    - Character Error Rate (CER).
+    - Word Error Rate (WER).
+    - Average Word-Level Bounding Box Confidence Score.
+
+
+================================================================================
+9. HOW DATA FLOWS BETWEEN MODELS (END-TO-END WORKFLOW)
+================================================================================
+
+  +-------------------------------+
+  | User Uploads PDF / Image File |
+  +---------------+---------------+
+                  |
+                  v
+  +-------------------------------+
+  | Model 7: Tesseract OCR Engine |  Converts raw pixels to text tokens
+  +---------------+---------------+
+                  |
+                  v
+  +-------------------------------+
+  | Model 1: Document Classifier  |  Predicts Document Type (Invoice, PO, etc.)
+  | (TF-IDF + Logistic Regression)|  (Fallback to Financial Heuristics if < 50%)
+  +---------------+---------------+
+                  |
+                  v
+  +-------------------------------+
+  | Domain Extractors / LayoutLM  |  Regex / LayoutLMv3 extracts field values:
+  | (Model 4: LayoutLM optional)  |  Account #, Total, Tax, Due Date, etc.
+  +---------------+---------------+
+                  |
+                  +-------------------------------+-------------------------------+
+                  |                               |                               |
+                  v                               v                               v
+  +-------------------------------+ +-------------------------------+ +-------------------------------+
+  | Domain Validation Rules       | | Model 2: Isolation Forest     | | Model 3: Duplicate Detector   |
+  | Deterministic Math Engine     | | (Anomaly Detection)           | | (Cosine Similarity + SHA-256) |
+  | Subtotal + Tax == Total       | | Detects extreme outliers      | | Checks against database       |
+  +---------------+---------------+ +---------------+---------------+ +---------------+---------------+
+                  |                               |                               |
+                  +-------------------------------+-------------------------------+
+                                                  |
+                                                  v
+                                  +-------------------------------+
+                                  | Model 6: Groq LLaMA-3.3-70B   |  Synthesizes Executive Summary,
+                                  | (Cognitive Reasoning Engine)  |  Line Items, & Risk Narrative
+                                  +---------------+---------------+
+                                                  |
+                                                  v
+                                  +-------------------------------+
+                                  | Model 5: RAG Dense Embeddings |  Indexes chunks for interactive
+                                  | (all-MiniLM-L6-v2)            |  natural language Q&A chat
+                                  +---------------+---------------+
+                                                  |
+                                                  v
+                                  +-------------------------------+
+                                  | Clean Option-Buttons Web UI   |  Overview, Data, Compliance,
+                                  | & Downloadable PDF Report     |  Outliers, AI Insights, OCR
+                                  +-------------------------------+
+
+
+================================================================================
+10. DATASET LOCATIONS & RETRAINING COMMANDS
+================================================================================
+
+A. RETRAIN THE DOCUMENT CLASSIFIER (Model 1):
+   1. Place text files under data/classification/<class_name>/doc_xxxx.txt
+   2. Run command from backend directory:
+      cd backend
+      .\venv\Scripts\python -m app.ml.classification.trainer --data-dir ../data/classification --output-dir ../ml/artifacts/classification --test-size 0.2 --max-features 10000
+
+B. RETRAIN THE ANOMALY DETECTOR (Model 2):
+   1. Train from CSV dataset:
+      cd backend
+      .\venv\Scripts\python scripts/train_anomaly.py --csv ../data/company-document-text.csv
+   2. Or train from active documents in PostgreSQL database:
+      cd backend
+      .\venv\Scripts\python scripts/train_anomaly.py
+
+C. PREPARE NEW CLASSIFICATION DATASETS FROM CSV:
+   cd backend
+   .\venv\Scripts\python scripts/prepare_classification_data.py --csv ../data/company-document-text.csv --output ../data/classification
+
+D. FINE-TUNE LAYOUTLM (Model 4 - Optional):
+   cd backend
+   .\venv\Scripts\python -m app.ml.layoutlm.trainer --data-dir ../data/annotations --output-dir ../ml/artifacts/layoutlm --epochs 10
+================================================================================

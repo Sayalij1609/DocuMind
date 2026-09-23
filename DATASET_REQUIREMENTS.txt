@@ -1,0 +1,583 @@
+================================================================================
+          NEXORA / DOCUMIND — DATASET COLLECTION & TRAINING GUIDE
+================================================================================
+  Purpose  : Increase classification accuracy by expanding training data
+  Model    : TF-IDF + SGD Linear Classifier (scikit-learn pipeline)
+  Location : data/classification/<category_name>/doc_XXXX.txt
+  Updated  : September 2026
+================================================================================
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 1 — FINAL CLASSIFICATION DATASET INVENTORY (ALL INTACT)             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Category            Folder Name             Files   Status
+  ─────────────────── ─────────────────────── ─────── ──────────────────
+  Audit Report        audit_report/           500     ✅ COMPLETE (Intact)
+  Balance Sheet       balance_sheet/          500     ✅ COMPLETE (Intact)
+  Bank Statement      bank_statement/         500     ✅ COMPLETE (Intact)
+  Cash Flow           cash_flow/              436     ✅ COMPLETE (Intact)
+  Check / Cheque      check/                  473     ✅ COMPLETE (Intact)
+  Insurance Policy    insurance_policy/       600     ✅ COMPLETE (Intact)
+  Invoice             invoice/                600     ✅ COMPLETE (Intact)
+  Loan Agreement      loan_agreement/         500     ✅ COMPLETE (Intact)
+  Other (Misc)        other/                  600     ✅ COMPLETE (Intact)
+  Profit & Loss       profit_loss/            500     ✅ COMPLETE (Intact)
+  Purchase Order      purchase_order/         600     ✅ COMPLETE (Intact)
+  Salary Slip         salary_slip/            485     ✅ COMPLETE (Intact)
+  Tax Return          tax_return/             431     ✅ COMPLETE (Intact)
+
+  TOTAL DATASET       : 6,725 files across all 13 categories
+  TRAINING SPLIT      : 5,380 train (80%) / 1,345 test (20%)
+  STATUS              : 100% INTACT & VERIFIED in data/classification/
+
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 2 — CATEGORY-WISE DATASET SPECIFICATION                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Each entry below describes:
+  • What the document type is
+  • Required keywords/fields the text MUST contain
+  • Target sample count
+  • Text file format specification
+  • Example content template
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 1: INVOICE  (invoice/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ✅ 830 samples (SUFFICIENT — can augment to 1000+)
+  Description  : Bills issued by sellers to buyers for goods/services
+  Must-Have    : invoice number, date, vendor name, line items (product,
+                 quantity, unit price), subtotal, tax amount, total due,
+                 payment terms, billing/shipping address
+  Variants     : Service invoices, product invoices, proforma invoices,
+                 credit notes, recurring invoices, GST/VAT invoices
+  Target Count : 800–1000
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ invoice invoice number INV-2024-0847 date 2024-03-15        │
+  │ vendor acme solutions pvt ltd address 42 mg road mumbai     │
+  │ maharashtra 400001 gstin 27AABCU9603R1ZM                    │
+  │ bill to globex corp 15 nehru place new delhi 110019         │
+  │ item description qty unit price amount                      │
+  │ web development services 1 85000 85000                      │
+  │ cloud hosting 12 months 1 24000 24000                       │
+  │ subtotal 109000 cgst 9% 9810 sgst 9% 9810                  │
+  │ total amount 128620 due date 2024-04-15                     │
+  │ payment terms net 30 bank details hdfc bank a/c 50200012345 │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 2: BANK STATEMENT  (bank_statement/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ❌ 0 samples (CRITICAL GAP)
+  Description  : Monthly/quarterly transaction record from a bank
+  Must-Have    : bank name, account number, statement period, opening
+                 balance, closing balance, transaction rows (date,
+                 description, debit, credit, running balance)
+  Variants     : Savings account, current account, credit card statement,
+                 fixed deposit statement, joint account statement
+  Target Count : 500–800
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ bank statement state bank of india                          │
+  │ account number 38912076543 branch koramangala bangalore     │
+  │ statement period 01-jan-2024 to 31-jan-2024                 │
+  │ account holder rajesh kumar sharma                          │
+  │ ifsc code sbin0012345                                       │
+  │ opening balance 145230.50                                   │
+  │ date narration debit credit balance                         │
+  │ 02-jan-2024 neft from xyz corp 0 55000 200230.50            │
+  │ 05-jan-2024 upi paytm grocery 2340 0 197890.50             │
+  │ 08-jan-2024 emi hdfc loan 15200 0 182690.50                │
+  │ 12-jan-2024 salary credit jan 2024 0 85000 267690.50       │
+  │ 15-jan-2024 electricity bill cesc 3450 0 264240.50         │
+  │ 20-jan-2024 atm withdrawal 10000 0 254240.50               │
+  │ closing balance 254240.50                                   │
+  │ total debits 31090 total credits 140000                     │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 3: SALARY SLIP / PAYSLIP  (salary_slip/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ❌ 0 samples (CRITICAL GAP)
+  Description  : Monthly compensation breakdown issued by employer
+  Must-Have    : company name, employee name, employee ID, designation,
+                 pay period, earnings (basic, HRA, DA, special allowance),
+                 deductions (PF, ESI, professional tax, TDS),
+                 gross pay, net pay, bank account number
+  Variants     : CTC-based, hourly-based, contractor payslips, 
+                 government employee pay slips, with/without bonus
+  Target Count : 500–800
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ salary slip for the month of march 2024                     │
+  │ company infosys technologies ltd campus electronics city    │
+  │ bangalore 560100                                            │
+  │ employee name priya nair employee id INF-2021-4567          │
+  │ designation senior software engineer department engineering │
+  │ date of joining 15-jun-2021 pan ABCPN1234F                 │
+  │ uan 101234567890 pf number KN/BNG/12345/67890              │
+  │ earnings basic salary 42000 hra 21000 conveyance 1600      │
+  │ special allowance 18400 medical allowance 1250             │
+  │ gross earnings 84250                                        │
+  │ deductions provident fund 5040 professional tax 200        │
+  │ income tax tds 7500 esi 0                                  │
+  │ total deductions 12740                                      │
+  │ net pay 71510 in words rupees seventy one thousand          │
+  │ five hundred and ten only                                   │
+  │ bank name icici bank account 912345678901                   │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 4: TAX RETURN  (tax_return/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ❌ 0 samples (CRITICAL GAP)
+  Description  : Annual income tax filing documents (ITR, W-2, 1099, etc.)
+  Must-Have    : assessment year, PAN/SSN/TIN, filing status, income
+                 sources (salary, business, capital gains, other),
+                 deductions (80C, 80D, HRA), taxable income, tax
+                 computed, TDS/advance tax paid, refund/balance due
+  Variants     : ITR-1 (Sahaj), ITR-2, ITR-3, ITR-4 (Sugam), US 1040,
+                 Form 16, Form 26AS, GST returns (GSTR-1, GSTR-3B)
+  Target Count : 400–600
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ income tax return itr-1 sahaj                               │
+  │ assessment year 2024-25 financial year 2023-24              │
+  │ name of assessee vikram singh pan ABCPS1234D                │
+  │ residential status resident filing status individual        │
+  │ income from salary gross salary 1200000                     │
+  │ less standard deduction 50000 net salary 1150000            │
+  │ income from house property rental income 240000             │
+  │ less interest on housing loan 200000 net hp income 40000    │
+  │ income from other sources fd interest 35000                 │
+  │ gross total income 1225000                                  │
+  │ deductions under chapter vi-a                               │
+  │ section 80c ppf 150000 section 80d health insurance 25000   │
+  │ section 80tta savings interest 10000                        │
+  │ total deductions 185000 taxable income 1040000              │
+  │ tax on total income 109200 education cess 4% 4368           │
+  │ total tax liability 113568 tds already paid 120000          │
+  │ refund due 6432 verification date 30-jul-2024               │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 5: BALANCE SHEET  (balance_sheet/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ❌ 0 samples (CRITICAL GAP)
+  Description  : Financial snapshot showing assets, liabilities, equity
+  Must-Have    : company name, reporting date, assets (current/non-current),
+                 liabilities (current/non-current), shareholders equity,
+                 retained earnings, total assets = total liabilities + equity
+  Variants     : Annual, quarterly, consolidated, standalone, audited,
+                 unaudited, comparative (multi-year)
+  Target Count : 400–600
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ balance sheet as at 31 march 2024                           │
+  │ company tata consultancy services limited                   │
+  │ cin L22210MH1995PLC084781                                   │
+  │ assets                                                      │
+  │ non current assets property plant equipment 15234           │
+  │ intangible assets 4521 investments 28340                    │
+  │ total non current assets 48095                              │
+  │ current assets trade receivables 32456                      │
+  │ cash and cash equivalents 8912 other current assets 5678   │
+  │ total current assets 47046                                  │
+  │ total assets 95141                                          │
+  │ equity and liabilities                                      │
+  │ shareholders equity share capital 3660                      │
+  │ reserves and surplus 67234 total equity 70894               │
+  │ non current liabilities deferred tax 3210                   │
+  │ long term borrowings 5000 total non current liab 8210       │
+  │ current liabilities trade payables 8945                     │
+  │ short term provisions 4567 other current liab 2525          │
+  │ total current liabilities 16037                             │
+  │ total equity and liabilities 95141                          │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 6: PROFIT & LOSS STATEMENT  (profit_loss/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ❌ 0 samples (CRITICAL GAP)
+  Description  : Income and expenditure summary over a period
+  Must-Have    : company name, period (quarter/year), revenue from
+                 operations, other income, total income, cost of goods
+                 sold, employee expenses, depreciation, other expenses,
+                 EBITDA, profit before tax, tax expense, net profit, EPS
+  Variants     : Quarterly, annual, consolidated, standalone, segment-wise
+  Target Count : 400–600
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ statement of profit and loss for year ended 31 march 2024   │
+  │ company reliance industries limited                         │
+  │ revenue from operations 652000 other income 18500           │
+  │ total income 670500                                         │
+  │ expenses cost of materials consumed 312000                  │
+  │ employee benefit expense 45000                              │
+  │ depreciation and amortisation 28500                         │
+  │ other expenses 84000 total expenses 469500                  │
+  │ profit before exceptional items 201000                      │
+  │ exceptional items 0 profit before tax 201000                │
+  │ tax expense current tax 42000 deferred tax 3500             │
+  │ profit after tax 155500                                     │
+  │ earnings per share basic 22.94 diluted 22.87               │
+  │ amounts in crores                                           │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 7: RECEIPT / VOUCHER  (receipt/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ❌ 0 samples (CRITICAL GAP)
+  Description  : Proof of payment / transaction acknowledgement
+  Must-Have    : receipt number, date, received from, amount received,
+                 payment method (cash/card/UPI/cheque), purpose/towards,
+                 received by / authorized signatory
+  Variants     : Cash receipt, payment voucher, petty cash voucher,
+                 donation receipt, rent receipt, delivery challan,
+                 expense voucher, journal voucher
+  Target Count : 500–700
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ cash receipt                                                │
+  │ receipt no REC-2024-1567 date 18-feb-2024                   │
+  │ received from mr amit patel                                 │
+  │ amount received 45000 rupees forty five thousand only       │
+  │ payment mode cheque cheque no 456789                        │
+  │ bank hdfc bank branch andheri west                          │
+  │ towards advance payment for office rent march 2024          │
+  │ received by sunshine properties pvt ltd                     │
+  │ address 23 link road andheri west mumbai 400053             │
+  │ gstin 27AABCS1234R1Z5                                      │
+  │ authorized signatory suresh mehta                           │
+  │ balance due 0                                               │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 8: INSURANCE POLICY  (insurance_policy/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ❌ 0 samples (CRITICAL GAP)
+  Description  : Insurance contract documents / policy schedules
+  Must-Have    : policy number, insurer name, policyholder name,
+                 sum insured / coverage amount, premium amount,
+                 policy period (start/end date), type of insurance,
+                 nominee details, exclusions, terms and conditions
+  Variants     : Life insurance, health insurance, motor insurance,
+                 property insurance, travel insurance, crop insurance,
+                 group insurance, professional liability
+  Target Count : 400–500
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ insurance policy schedule                                   │
+  │ policy number LIC-TERM-2024-789456                          │
+  │ insurer life insurance corporation of india                 │
+  │ product name lic jeevan amar plan no 955                    │
+  │ policyholder name arun kumar gupta                          │
+  │ date of birth 14-aug-1985 age 38 years                     │
+  │ sum assured 10000000 ten crore rupees                       │
+  │ policy term 30 years premium paying term 30 years           │
+  │ annual premium 32500 premium frequency yearly               │
+  │ risk commencement date 01-apr-2024                          │
+  │ maturity date 01-apr-2054                                   │
+  │ nominee name meera gupta relationship spouse                │
+  │ nomination percentage 100                                   │
+  │ smoker status non smoker                                    │
+  │ exclusions suicide within first year                        │
+  │ mode of premium payment nach mandate bank of baroda         │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 9: LOAN AGREEMENT  (loan_agreement/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ❌ 0 samples (CRITICAL GAP)
+  Description  : Loan sanction letters, EMI schedules, agreements
+  Must-Have    : loan account number, lender name, borrower name,
+                 loan type, sanctioned amount, interest rate (fixed/
+                 floating), tenure, EMI amount, disbursement date,
+                 repayment schedule, collateral/security details,
+                 processing fee, prepayment terms
+  Variants     : Home loan, personal loan, car loan, education loan,
+                 business loan, gold loan, loan against property,
+                 EMI amortization schedule
+  Target Count : 400–500
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ loan sanction letter                                        │
+  │ loan account number HL-2024-MUM-456789                      │
+  │ lender hdfc bank limited                                    │
+  │ borrower name deepak mehta co borrower anita mehta           │
+  │ loan type home loan                                         │
+  │ property address flat 302 sunrise towers powai mumbai       │
+  │ sanctioned amount 7500000 seventy five lakh rupees          │
+  │ interest rate 8.50 percent per annum floating               │
+  │ linked to rplr rplr minus 0.15 percent                     │
+  │ loan tenure 240 months 20 years                             │
+  │ emi amount 65087 per month                                  │
+  │ disbursement date 15-mar-2024                               │
+  │ first emi date 05-apr-2024                                  │
+  │ processing fee 8500 plus gst                                │
+  │ prepayment charges nil for floating rate                    │
+  │ collateral property mortgage first charge                   │
+  │ insurance mandatory home loan protection plan               │
+  │ total interest payable 8120880                              │
+  │ total repayment amount 15620880                             │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 10: AUDIT REPORT  (audit_report/)
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ❌ 0 samples (CRITICAL GAP)
+  Description  : Independent/statutory auditor's report on financials
+  Must-Have    : auditor firm name, client company name, audit period,
+                 opinion type (unqualified/qualified/adverse/disclaimer),
+                 basis for opinion, key audit matters, management
+                 responsibility, auditor responsibility, report date,
+                 CARO observations (for Indian companies)
+  Variants     : Statutory audit, internal audit, tax audit, forensic
+                 audit, compliance audit, management letter, CARO report
+  Target Count : 300–500
+
+  SAMPLE FORMAT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ independent auditors report                                 │
+  │ to the members of wipro limited                             │
+  │ report on the audit of financial statements                 │
+  │ opinion we have audited the accompanying financial          │
+  │ statements of wipro limited the company which comprise      │
+  │ the balance sheet as at 31 march 2024 the statement of      │
+  │ profit and loss the statement of changes in equity and      │
+  │ the cash flow statement for the year then ended             │
+  │ in our opinion the aforesaid financial statements give      │
+  │ a true and fair view in conformity with indian accounting   │
+  │ standards                                                   │
+  │ basis for opinion we conducted our audit in accordance      │
+  │ with standards on auditing sa issued by icai                │
+  │ key audit matters revenue recognition goodwill impairment   │
+  │ auditor firm deloitte haskins and sells llp                 │
+  │ firm registration number 117366W W-100018                   │
+  │ chartered accountants partner name vikas bagaria            │
+  │ membership number 060408 udin 24060408BKABCD1234           │
+  │ place bangalore date 19-apr-2024                            │
+  └──────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 11: PURCHASE ORDER  (purchase_order/) — ALREADY EXISTS
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ✅ 830 samples (SUFFICIENT)
+  Description  : Buyer's formal order to a vendor
+  Must-Have    : PO number, date, vendor, items, quantities, prices
+
+
+────────────────────────────────────────────────────────────────────────────────
+CATEGORY 12: OTHER / MISCELLANEOUS  (other/) — ALREADY EXISTS
+────────────────────────────────────────────────────────────────────────────────
+  Status       : ✅ 1016 samples (SUFFICIENT)
+  Description  : Non-financial or unclassified documents
+  Note         : Acts as the negative class — keeps false positive rate low
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 3 — DATA FORMAT SPECIFICATION                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  FILE FORMAT   : Plain text (.txt), UTF-8 encoding, no BOM
+  FILE SIZE     : 150–2000 bytes per file (matching existing data)
+  FILE NAMING   : doc_XXXX.txt (sequential, 4-digit padded)
+  CONTENT STYLE : Lowercase OCR-like text, minimal punctuation
+                  (simulates Tesseract OCR output from scanned PDFs)
+  NO HEADERS    : Do NOT include column headers like "Category: Invoice"
+                  — the content itself is the only training signal
+  ONE FILE = ONE DOCUMENT: Each file represents one complete document
+
+  IMPORTANT RULES:
+  ────────────────
+  1. DO NOT include the category name as a label inside the file.
+     The folder name IS the label.
+  2. Vary company names, amounts, dates, addresses across files.
+  3. Mix Indian (INR/GST) and international (USD/EUR/VAT) formats.
+  4. Include realistic OCR noise: missing spaces, merged words,
+     occasional typos (~5% of files) to improve robustness.
+  5. Vary document lengths: some short (3-4 lines), some detailed
+     (20-30 lines) to match real-world distribution.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 4 — DATA SOURCING STRATEGIES                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  STRATEGY 1: SYNTHETIC GENERATION (FASTEST — RECOMMENDED)
+  ─────────────────────────────────────────────────────────
+  • Use ChatGPT / Gemini / Claude to generate realistic text samples
+  • Prompt: "Generate 50 unique bank statement texts in OCR-extracted
+    format, each with different bank names, account numbers, dates,
+    transactions. Make them look like Tesseract OCR output."
+  • Post-process: lowercase, remove excess formatting, save as .txt
+
+  STRATEGY 2: TEMPLATE-BASED GENERATION
+  ──────────────────────────────────────
+  • Write Python scripts with templates + randomized values
+  • Use Faker library for realistic names, addresses, amounts
+  • Example: backend/scripts/generate_training_data.py (create this)
+  • Best for: Invoices, Receipts, Salary Slips, Bank Statements
+
+  STRATEGY 3: PUBLIC DATASETS
+  ────────────────────────────
+  • Kaggle "Invoice Dataset" — convert PDF text to .txt
+  • RVL-CDIP document classification dataset (subset financial)
+  • SEC EDGAR filings for Balance Sheets / P&L / Audit Reports
+  • SROIE (Scanned Receipt OCR) dataset for receipts
+  • IIT Bombay Financial NLP datasets
+
+  STRATEGY 4: REAL DOCUMENT COLLECTION
+  ─────────────────────────────────────
+  • Collect actual documents (anonymize sensitive data!)
+  • Scan → OCR → save text output
+  • Most authentic but requires data privacy compliance
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 5 — PRIORITY MATRIX & EFFORT ESTIMATE                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Priority  Category           Min Samples   Effort    Impact
+  ───────── ────────────────── ─────────── ────────── ───────────
+  P0        Bank Statement     500          2–3 hours  🔴 CRITICAL
+  P0        Salary Slip        500          2–3 hours  🔴 CRITICAL
+  P0        Receipt/Voucher    500          2–3 hours  🔴 CRITICAL
+  P1        Tax Return         400          3–4 hours  🟠 HIGH
+  P1        Balance Sheet      400          3–4 hours  🟠 HIGH
+  P1        Profit & Loss      400          3–4 hours  🟠 HIGH
+  P2        Insurance Policy   400          3–4 hours  🟡 MEDIUM
+  P2        Loan Agreement     400          3–4 hours  🟡 MEDIUM
+  P2        Audit Report       300          3–4 hours  🟡 MEDIUM
+
+  ESTIMATED TOTAL: 3,800 new files — approximately 25–30 hours of effort
+  with synthetic generation, or 3–4 hours with scripted templates.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 6 — FOLDER STRUCTURE (CREATE THESE)                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  data/
+  └── classification/
+      ├── invoice/              ✅ (830 files — exists)
+      ├── purchase_order/       ✅ (830 files — exists)
+      ├── other/                ✅ (1016 files — exists)
+      ├── bank_statement/       ❌ CREATE → add 500+ .txt files
+      ├── salary_slip/          ❌ CREATE → add 500+ .txt files
+      ├── tax_return/           ❌ CREATE → add 400+ .txt files
+      ├── balance_sheet/        ❌ CREATE → add 400+ .txt files
+      ├── profit_loss/          ❌ CREATE → add 400+ .txt files
+      ├── receipt/              ❌ CREATE → add 500+ .txt files
+      ├── insurance_policy/     ❌ CREATE → add 400+ .txt files
+      ├── loan_agreement/       ❌ CREATE → add 400+ .txt files
+      └── audit_report/         ❌ CREATE → add 300+ .txt files
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 7 — HOW TO RETRAIN AFTER ADDING DATA                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Step 1: Place your .txt files in the correct category folders above.
+
+  Step 2: Update the trainer's category list if needed:
+          File: backend/app/ml/classification/trainer.py
+          Ensure all new folder names are in CATEGORIES list.
+
+  Step 3: Run the training command:
+          ┌────────────────────────────────────────────────────┐
+          │ cd backend                                         │
+          │ python -m app.ml.classification.trainer             │
+          └────────────────────────────────────────────────────┘
+
+  Step 4: The trainer will output:
+          • classifier.joblib  (trained model)
+          • vectorizer.joblib  (TF-IDF vocabulary)
+          • Training accuracy, F1-score per class
+          • Confusion matrix
+
+  Step 5: Verify by running tests:
+          ┌────────────────────────────────────────────────────┐
+          │ python -m pytest tests/ -v                          │
+          └────────────────────────────────────────────────────┘
+
+  Step 6: Restart the backend server to load the new model:
+          ┌────────────────────────────────────────────────────┐
+          │ python -m uvicorn app.main:app --reload             │
+          └────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 8 — KEY DISCRIMINATING FEATURES PER CATEGORY                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  These are the TF-IDF terms that will separate each class:
+
+  Category           Top Discriminating Keywords
+  ────────────────── ──────────────────────────────────────────────────
+  Invoice            invoice, qty, unit price, subtotal, tax, total due
+  Bank Statement     opening balance, closing balance, narration, neft,
+                     upi, atm, statement period, debit, credit
+  Salary Slip        basic salary, hra, pf, tds, gross, net pay, epf,
+                     provident fund, professional tax, employee id
+  Tax Return         assessment year, taxable income, 80c, 80d, itr,
+                     deduction, return, chapter vi, refund, pan
+  Balance Sheet      assets, liabilities, equity, reserves, surplus,
+                     receivables, payables, shareholders, retained
+  Profit & Loss      revenue, expenses, ebitda, depreciation, profit
+                     before tax, net profit, eps, cost of goods
+  Receipt/Voucher    receipt, received from, payment mode, cash, cheque,
+                     voucher, towards, acknowledged, petty cash
+  Insurance Policy   policy number, sum assured, premium, nominee,
+                     insured, coverage, exclusions, risk, maturity
+  Loan Agreement     sanctioned amount, emi, interest rate, tenure,
+                     borrower, lender, collateral, disbursement,
+                     repayment, prepayment, floating, fixed rate
+  Audit Report       auditor, opinion, true and fair, icai, caro,
+                     qualified, unqualified, key audit matters,
+                     chartered accountant, standards on auditing
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 9 — QUALITY CHECKLIST BEFORE TRAINING                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  □  Each category has at least 300 samples
+  □  No category has more than 3x the smallest category (balance check)
+  □  Files are plain text, UTF-8, no binary content
+  □  File sizes are between 100–3000 bytes
+  □  No duplicate files across categories
+  □  At least 20% of samples include OCR-like noise/artifacts
+  □  Mix of Indian and international document formats
+  □  Variety in company names, amounts, dates (no copy-paste patterns)
+  □  Category folder names match the trainer's CATEGORIES list exactly
+  □  Backup existing model files before retraining
+
+================================================================================
+  END OF DOCUMENT — NEXORA DATASET COLLECTION & TRAINING GUIDE
+================================================================================

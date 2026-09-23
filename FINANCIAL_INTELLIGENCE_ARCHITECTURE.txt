@@ -1,0 +1,303 @@
+================================================================================
+     NEXORA / DOCUMIND — FINANCIAL DOCUMENT INTELLIGENCE ARCHITECTURE
+        How the System Understands Financial Terms & Classifies Documents
+================================================================================
+
+Date: September 2026
+Platform: Nexora / DocuMind Enterprise IDP
+Repository: Sayalij1609/Nexora
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. Executive Summary & Core Philosophy
+2. Document Classification Architecture (How Documents are Categorized)
+   2.1. Tier 1: Classical Machine Learning Model (TF-IDF + SGD/Logistic)
+   2.2. Tier 2: Deterministic Financial Heuristic Engine (Pattern & Weighting)
+   2.3. Tier 3: AI Semantic Arbitration (Groq LLaMA-3.3-70B)
+3. Financial Terminology Understanding & Field Extraction
+   3.1. Domain-Specific Key-Value Normalization
+   3.2. Regex & Context-Window Extraction Rules
+   3.3. Financial Currency & Number Normalization (INR / USD / Decimals)
+   3.4. Generative AI Deep Semantic Entity Extraction
+4. Summary of Machine Learning Models in the System
+5. Domain Validation & Mathematical Reconciliation Rules
+6. End-to-End Pipeline Workflow Diagram
+
+================================================================================
+1. EXECUTIVE SUMMARY & CORE PHILOSOPHY
+================================================================================
+Nexora / DocuMind does not rely on a single generic AI prompt or a rigid keyword
+list. Instead, it utilizes a multi-tier hybrid architecture combining:
+  1. Classical Supervised Machine Learning (Scikit-Learn TF-IDF classification)
+  2. Rule-based Domain Heuristics & Deterministic Regular Expressions
+  3. Unsupervised Machine Learning (Isolation Forest Anomaly Detection)
+  4. Vector-based Similarity (Cosine Similarity for Duplicate Identification)
+  5. State-of-the-art Large Language Models (Groq LLaMA-3.3-70B)
+  6. Strict Accounting Reconciliation Rules (Deterministic Math Verification)
+
+This hybrid design guarantees high processing speed, zero hallucination for
+mathematical auditing, resilience against poor-quality OCR, and deep contextual
+understanding.
+
+
+================================================================================
+2. DOCUMENT CLASSIFICATION ARCHITECTURE
+================================================================================
+Documents are classified through a 3-tier arbitration hierarchy:
+
+  Uploaded File
+       │
+       ▼
+  [OCR Engine: Tesseract + PDFPlumber] -> Cleaned Text
+       │
+       ▼
+  [TIER 1: Trained ML Classifier (classifier.joblib)]
+       │
+       ├── If Confidence >= 0.50 ───> Accepted Primary Category
+       │
+       └── If Confidence < 0.50 or Ambiguous
+             │
+             ▼
+  [TIER 2: Financial Heuristic Classifier (heuristics.py)]
+       │
+       ├── Trigger Patterns & Weighted Term Frequency Analysis
+       │   (Assigns 70% - 85% calibrated confidence)
+       │
+       ▼
+  [TIER 3: AI Semantic Arbitration (Groq LLaMA-3.3-70B)]
+       │
+       └── Reconciles edge cases, verifies layout, and updates the database.
+
+--------------------------------------------------------------------------------
+2.1. TIER 1: CLASSICAL MACHINE LEARNING MODEL
+--------------------------------------------------------------------------------
+- Location: backend/app/ml/artifacts/classification/classifier.joblib
+- Algorithm: Scikit-Learn TF-IDF Vectorizer + SGDClassifier / LogisticRegression
+- How it works:
+    1. The cleaned OCR text is converted into word n-grams (1-gram and 2-gram).
+    2. Words are assigned TF-IDF (Term Frequency-Inverse Document Frequency)
+       weights, down-weighting common English stop words while highlighting
+       informative words like "invoice", "subtotal", "purchase", "order".
+    3. The classifier calculates a probability distribution across known classes.
+    4. If the top class score exceeds the threshold (0.50), it is adopted.
+
+--------------------------------------------------------------------------------
+2.2. TIER 2: FINANCIAL HEURISTIC CLASSIFIER (heuristics.py)
+--------------------------------------------------------------------------------
+- Location: backend/app/ml/classification/heuristics.py
+- Why it is needed:
+    Scanned business documents often contain OCR noise, non-standard layouts,
+    or specialized terminology that classical models may misclassify as
+    "unclassified".
+- Mechanism:
+    Evaluates documents using two scoring components:
+      a) Primary Trigger Patterns (Weight: 3.0): Exact multi-word regex phrases
+         unique to a specific document type.
+      b) Secondary Vocabulary (Weight: 1.0): Contextual words frequently present.
+- Calibrated Confidence Formula:
+    Score = min(0.85, 0.60 + (matched_score / 15.0) * 0.25)
+    Guarantees reliable, deterministic routing with 70% to 85% confidence.
+
+- Supported Financial Categories:
+    1. INVOICE:
+       - Triggers: "tax invoice", "commercial invoice", "gstin", "bill to"
+       - Terms: subtotal, gst, cgst, sgst, igst, amount due, invoice date
+    2. BANK STATEMENT:
+       - Triggers: "statement of account", "account summary", "opening balance",
+                   "closing balance", "ifsc code"
+       - Terms: withdrawal, deposit, credit, debit, cheque, clearing, transaction
+    3. SALARY SLIP / PAYSLIP:
+       - Triggers: "payslip for the month", "salary slip", "earnings and deductions",
+                   "basic pay", "net pay"
+       - Terms: hra, provident fund, pf, gratuity, esi, deductions, gross salary
+    4. UTILITY BILL:
+       - Triggers: "electricity bill", "water bill", "consumer number", "meter number",
+                   "units consumed", "kwh"
+       - Terms: tariff, sanctioned load, billing period, due date, power distribution
+    5. RECEIPT:
+       - Triggers: "payment receipt", "cash memo", "pos terminal", "receipt no"
+       - Terms: change due, cash, card, cashier, tender, store #
+    6. PURCHASE ORDER:
+       - Triggers: "purchase order", "po number", "order confirmation", "vendor order"
+       - Terms: ship to, deliver to, requisition, payment terms, buyer
+    7. TAX DOCUMENT:
+       - Triggers: "form 16", "form 26as", "income tax department", "pan card",
+                   "assessment year"
+       - Terms: tds, tan, taxable income, rebate, financial year
+    8. INSURANCE POLICY / CLAIM:
+       - Triggers: "insurance policy", "policy schedule", "sum insured",
+                   "premium receipt"
+       - Terms: policyholder, deductible, coverage, nominee, insured
+    9. CREDIT NOTE / DEBIT NOTE:
+       - Triggers: "credit note", "debit note", "adjustment voucher"
+       - Terms: against invoice, credit memo, debit memo, adjustment
+    10. GENERAL FINANCIAL STATEMENT:
+       - Triggers: "balance sheet", "profit and loss", "income statement",
+                   "cash flow statement"
+       - Terms: assets, liabilities, equity, revenue, ebitda, depreciation
+
+--------------------------------------------------------------------------------
+2.3. TIER 3: AI SEMANTIC ARBITRATION (Groq LLaMA-3.3-70B)
+--------------------------------------------------------------------------------
+- Location: backend/app/services/ai_analysis_service.py
+- When the user enables the Groq API key, the LLaMA-3.3-70B model inspects the
+  full layout and language context.
+- If the classical ML or heuristic classification requires refinement, the AI
+  reconciles the document category and updates the persistent database record.
+
+
+================================================================================
+3. FINANCIAL TERMINOLOGY UNDERSTANDING & FIELD EXTRACTION
+================================================================================
+
+--------------------------------------------------------------------------------
+3.1. DOMAIN-SPECIFIC REGEX & CONTEXT-WINDOW EXTRACTORS
+--------------------------------------------------------------------------------
+- Location: backend/app/ml/extraction/financial_extractors.py & invoice_extractor.py
+- How it works:
+    Instead of assuming every document is an invoice, the system instantiates a
+    specialized extractor registered in ExtractionRegistry:
+
+    - BankStatementExtractor:
+        * Account Number: captures 9-18 digit account strings following "A/c No",
+          "Account #", "Account Number".
+        * IFSC Code: validates RBI format `^[A-Z]{4}0[A-Z0-9]{6}$`.
+        * Balance Endpoints: regex anchors targeting "Opening Balance",
+          "Closing Balance", "Total Debits / Withdrawals", "Total Credits / Deposits".
+    - SalarySlipExtractor:
+        * Employee Identifier: captures employee IDs (e.g., EMP-10492, Staff No).
+        * Earnings & Deductions: extracts Basic Salary, Gross Earnings, Total
+          Deductions, and Net Take-Home Pay.
+    - UtilityBillExtractor:
+        * Consumer & Meter Number: parses consumer IDs and electricity meter codes.
+        * Energy Units: parses "kWh" or "Units Consumed" and total bill amount.
+    - ReceiptExtractor & InvoiceExtractor:
+        * Identifies Vendor, Bill To, Subtotal, Taxes (CGST/SGST/IGST), Total.
+
+--------------------------------------------------------------------------------
+3.2. FINANCIAL CURRENCY & NUMBER NORMALIZATION
+--------------------------------------------------------------------------------
+- Location: backend/app/ml/extraction/normalizers.py
+- Financial values appear in various formats across global and Indian ledgers:
+    * ₹ 1,50,000.00
+    * Rs. 150000.50
+    * $1,250.00
+    * 1.250,00 EUR
+- The normalization engine removes currency prefixes, strips localized comma
+  separators, and parses figures into Python `Decimal` instances with fixed
+  precision (avoiding IEEE-754 floating-point rounding errors).
+
+--------------------------------------------------------------------------------
+3.3. GENERATIVE AI DEEP SEMANTIC ENTITY EXTRACTION
+--------------------------------------------------------------------------------
+- Model: LLaMA-3.3-70B-Versatile via Groq API
+- The AI service sends a structured prompt enforcing strict JSON output:
+    * Identified Entities: Vendor, Buyer, Bank, Account, Tax IDs.
+    * Line Items Array: Description, Quantity, Unit Price, Total Amount.
+    * Financial Breakdown: Currency, Subtotal, Tax/GST, Discounts, Grand Total.
+    * Risk Assessment Narrative: Human-like explanation of inconsistencies,
+      irregular tax percentages, or unexpected clauses.
+
+
+================================================================================
+4. SUMMARY OF MACHINE LEARNING MODELS IN THE SYSTEM
+================================================================================
+
++-----------------------+-----------------------------+-------------------------+
+| Pipeline Component    | Model / Framework           | Role in Nexora          |
++-----------------------+-----------------------------+-------------------------+
+| Document              | Scikit-Learn                | Fast statistical        |
+| Classification        | TF-IDF + SGDClassifier      | document categorization |
++-----------------------+-----------------------------+-------------------------+
+| Anomaly & Outlier     | Scikit-Learn                | Unsupervised outlier    |
+| Detection             | IsolationForest             | fraud/irregularity flag |
++-----------------------+-----------------------------+-------------------------+
+| Duplicate             | Scikit-Learn TF-IDF         | Detects duplicate bills |
+| Identification        | Cosine Similarity + SHA-256 | and double-billing      |
++-----------------------+-----------------------------+-------------------------+
+| Cognitive Semantic    | Groq Cloud API              | Executive summaries,    |
+| Intelligence & QA     | LLaMA-3.3-70B-Versatile     | line items & RAG Q&A    |
++-----------------------+-----------------------------+-------------------------+
+| Optical Character     | Google Tesseract OCR        | Vision-to-text token    |
+| Recognition (OCR)     | + PDFPlumber                | extraction and bounding |
++-----------------------+-----------------------------+-------------------------+
+
+
+================================================================================
+5. DOMAIN VALIDATION & MATHEMATICAL RECONCILIATION RULES
+================================================================================
+The platform distinguishes itself by not relying on AI guesses for numbers.
+All extracted figures must satisfy strict deterministic domain math:
+
+1. INVOICE RECONCILIATION:
+   Formula:  Subtotal + Tax (or GST) ≈ Total Amount  (Tolerance: ₹0.05)
+   Rule:     Date Consistency (Due Date >= Invoice Date)
+
+2. BANK STATEMENT RECONCILIATION:
+   Formula:  Opening Balance + Total Deposits - Total Withdrawals == Closing Balance
+   Rule:     Must contain valid Account Number and non-empty balance endpoints.
+
+3. SALARY SLIP RECONCILIATION:
+   Formula:  Gross Salary - Total Deductions == Net Pay
+   Rule:     Must contain valid Employee Identifier and non-negative pay figures.
+
+4. UTILITY BILL AUDIT:
+   Rule:     Consumer Number validation, positive charge verification, and
+             past vs. future due date consistency.
+
+5. ISOLATION FOREST STATISTICAL AUDIT:
+   Evaluates a feature vector:
+     [Total Amount, Line Item Count, Character Count, Tax-to-Total Ratio]
+   Assigns an Anomaly Score (< 0.0 indicates statistical outlier).
+
+
+================================================================================
+6. END-TO-END PIPELINE WORKFLOW DIAGRAM
+================================================================================
+
+  +-----------------------+
+  |  Uploaded Document    |  (PDF, PNG, JPG, TIFF)
+  +-----------+-----------+
+              |
+              v
+  +-----------------------+
+  | Tesseract OCR Engine  |  Extracts text tokens & layout structure
+  +-----------+-----------+
+              |
+              v
+  +-----------------------+
+  | Multi-Tier Classifier |  Tier 1: ML Model (TF-IDF + SGD)
+  |                       |  Tier 2: Financial Heuristic Engine
+  +-----------+-----------+
+              |
+              v
+  +-----------------------+
+  | Domain Extractor      |  Dispatches Bank / Salary / Invoice / Utility extractor
+  +-----------+-----------+
+              |
+              v
+  +-----------------------+
+  | Validation Engine     |  Deterministic arithmetic reconciliation & audits
+  +-----------+-----------+
+              |
+              +----------------------------+
+              |                            |
+              v                            v
+  +-----------------------+    +-----------------------+
+  | Isolation Forest ML   |    | Duplicate Detector    |
+  | Anomaly Detection     |    | Cosine Similarity     |
+  +-----------+-----------+    +-----------+-----------+
+              |                            |
+              +-------------+--------------+
+                            |
+                            v
+              +---------------------------+
+              | AI Semantic Engine (Groq) |  LLaMA-3.3-70B Analysis & Summaries
+              +-------------+-------------+
+                            |
+                            v
+              +---------------------------+
+              | Clean Option-Buttons UI   |  Overview, Data, Rules, Outliers, AI
+              +---------------------------+
+================================================================================

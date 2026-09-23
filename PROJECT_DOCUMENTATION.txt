@@ -269,64 +269,217 @@ OCR CONFIGURATION:
 
 
 ────────────────────────────────────────────────────────────────────
-PHASE 4 — DOCUMENT CLASSIFICATION (ML)
+PHASE 4 — DOCUMENT CLASSIFICATION (MULTI-TIER HYBRID ML + HEURISTICS)
 ────────────────────────────────────────────────────────────────────
 
 OBJECTIVE:
-    Classify documents into types using a trained TF-IDF + SGD model.
+    Classify documents into 13 financial categories using a multi-tier
+    hybrid approach: Classical ML + Financial Heuristics + LLM Arbitration.
 
-CLASSIFICATION TYPES:
+CLASSIFICATION CATEGORIES (13 Classes):
     - Invoice
-    - Receipt
-    - Contract
-    - Resume
+    - Purchase Order
     - Bank Statement
-    - Unclassified (fallback)
-
-ML PIPELINE:
-    Cleaned Text -> TF-IDF Vectorizer (max 5000 features, 1-2 ngrams)
-    -> SGD Classifier (hinge loss) -> Predicted Type + Confidence Score
-
-FILES CREATED:
-    backend/
-        app/ml/classifier.py          — DocumentClassifier class
-        app/ml/train_classifier.py    — Training script
-        ml/artifacts/                 — Saved model + vectorizer (joblib)
-
-TRAINING DATA:
-    - Synthetic + real samples per document type
-    - 80/20 train/test split
-    - Cross-validation for hyperparameter tuning
-
-KEY DECISIONS:
-    - TF-IDF + SGD chosen for speed (no GPU required)
-    - Confidence threshold: 0.3 (below = "unclassified")
-    - Model serialized via joblib for fast loading
+    - Salary Slip / Payslip
+    - Balance Sheet
+    - Profit & Loss (Income Statement)
+    - Cash Flow Statement
+    - Tax Return (ITR / Form 16)
+    - Insurance Policy / Claim
+    - Loan Agreement
+    - Audit Report
+    - Check / Cheque
+    - Other (General/Unclassified)
 
 
 ────────────────────────────────────────────────────────────────────
-PHASE 5 — FIELD EXTRACTION ENGINE
+    TRAINING DATA
+────────────────────────────────────────────────────────────────────
+
+    Total Training Samples: 6,725 documents
+    Data Format:            Plain text (.txt), UTF-8, lowercase
+    File Size:              100-2,000 bytes per file
+    Data Location:          data/classification/<category_name>/
+
+    PER-CATEGORY DATA DISTRIBUTION (BALANCED):
+    ┌──────────────────────┬────────┬──────────────────────────────┐
+    │ Category             │ Files  │ Data Sources                 │
+    ├──────────────────────┼────────┼──────────────────────────────┤
+    │ insurance_policy     │    600 │ Synthetic + CSV conversion   │
+    │ invoice              │    600 │ Existing training data       │
+    │ purchase_order       │    600 │ Existing training data       │
+    │ other                │    600 │ Existing training data       │
+    │ audit_report         │    500 │ Synthetic generation         │
+    │ balance_sheet        │    500 │ HTML conversion + Synthetic  │
+    │ bank_statement       │    500 │ OCR + CSV + Synthetic        │
+    │ loan_agreement       │    500 │ Synthetic generation         │
+    │ profit_loss          │    500 │ HTML conversion + Synthetic  │
+    │ salary_slip          │    485 │ OCR + Synthetic              │
+    │ check                │    473 │ OCR + Synthetic              │
+    │ cash_flow            │    436 │ HTML conversion + Synthetic  │
+    │ tax_return           │    431 │ OCR + Synthetic              │
+    └──────────────────────┴────────┴──────────────────────────────┘
+
+    DATA SOURCING STRATEGIES:
+    1. Existing Data    — Pre-existing labeled text from initial project
+    2. HTML Conversion  — SEC EDGAR financial HTML tables parsed with
+                          BeautifulSoup, text extracted and lowercased
+    3. JPG OCR          — Scanned document images (bank statements,
+                          salary slips, ITR forms, cheques) processed
+                          with Tesseract OCR v5.5.3 to extract text
+    4. CSV Conversion   — Tabular data (bankstatements.csv,
+                          data_synthetic.csv, insurance_dataset.csv)
+                          converted row-by-row into natural language text
+    5. Synthetic        — Python-generated training samples using
+                          randomized templates with realistic Indian
+                          financial data (names, PAN, IFSC, amounts)
+
+    DATA PREPROCESSING PIPELINE:
+    1. Text Normalization  → Convert to lowercase
+    2. Whitespace Cleanup  → Collapse multiple spaces/newlines
+    3. ASCII Filtering     → Remove non-ASCII characters
+    4. Size Enforcement    → Truncate to 2,000 bytes max
+    5. OCR Noise Injection → 3% random character mutations on
+                             synthetic data (swap/drop/double)
+                             to simulate real OCR errors
+    6. Class Balancing     → Cap over-represented classes at 600,
+                             boost under-represented with synthetic data
+
+    SCRIPTS USED FOR DATA PREPARATION:
+    scripts/generate_training_data.py   — Synthetic: Insurance, Loan, Audit
+    scripts/generate_lowcount_data.py   — Synthetic: Salary, Check, Cash, Tax
+    scripts/convert_raw_data.py         — HTML/JPG/CSV to text conversion
+    scripts/balance_classes.py          — Class balancing (cap + boost)
+
+
+────────────────────────────────────────────────────────────────────
+    ML ALGORITHM & MODEL ARCHITECTURE
+────────────────────────────────────────────────────────────────────
+
+    MODEL TYPE: TF-IDF + Logistic Regression (scikit-learn)
+
+    FEATURE EXTRACTION — TF-IDF Vectorizer:
+        Algorithm:          Term Frequency-Inverse Document Frequency
+        N-gram Range:       (1, 2) — unigrams and bigrams
+        Max Features:       10,000 (vocabulary cap)
+        Sublinear TF:       Enabled (applies log normalization)
+        Stop Words:         None (financial terms may be stop words)
+        Analyzer:           Word-level tokenization
+        Output:             Sparse matrix of shape (n_docs, 10000)
+
+    CLASSIFIER — Logistic Regression:
+        Algorithm:          One-vs-Rest Logistic Regression
+        Regularization:     L2 (Ridge)
+        Solver:             lbfgs
+        Max Iterations:     1000
+        Multi-class:        One-vs-Rest (OvR)
+        Output:             Probability distribution over 13 classes
+
+    MULTI-TIER CLASSIFICATION ARCHITECTURE:
+    1. Tier 1 — Classical Supervised ML (TF-IDF + Logistic Regression):
+       - Converts cleaned OCR text into n-grams (1-2) with TF-IDF.
+       - Returns probability scores. If confidence >= 0.50, adopts prediction.
+    2. Tier 2 — Financial Heuristic Classifier (heuristics.py):
+       - Trigger regexes (3.0 weight) + keyword vocabulary (1.0 weight).
+       - Provides 70%-85% calibrated confidence when ML model is ambiguous.
+    3. Tier 3 — AI Semantic Arbitration (Groq LLaMA-3.3-70B):
+       - Validates document context and updates prediction if needed.
+
+
+────────────────────────────────────────────────────────────────────
+    MODEL TRAINING & EVALUATION METRICS
+────────────────────────────────────────────────────────────────────
+
+    TRAINING CONFIGURATION:
+        Training Date:      2026-09-23
+        Train/Test Split:   80/20 (stratified)
+        Training Samples:   5,380
+        Test Samples:       1,345
+        Random State:       42
+        Vocabulary Size:    10,000 features
+
+    OVERALL METRICS:
+    ┌────────────────────────┬──────────┐
+    │ Metric                 │ Score    │
+    ├────────────────────────┼──────────┤
+    │ Accuracy               │ 0.9978   │
+    │ Precision (macro avg)  │ 0.9977   │
+    │ Recall (macro avg)     │ 0.9976   │
+    │ F1-Score (macro avg)   │ 0.9976   │
+    └────────────────────────┴──────────┘
+
+    PER-CLASS PERFORMANCE (from Confusion Matrix):
+    ┌──────────────────────┬────────┬────────┬─────────┬──────────┐
+    │ Category             │ Test N │ Correct│ Errors  │ Accuracy │
+    ├──────────────────────┼────────┼────────┼─────────┼──────────┤
+    │ audit_report         │    100 │    100 │      0  │ 100.00%  │
+    │ balance_sheet        │    100 │    100 │      0  │ 100.00%  │
+    │ bank_statement       │    100 │     98 │      2  │  98.00%  │
+    │ cash_flow            │     87 │     86 │      1  │  98.85%  │
+    │ check                │     95 │     95 │      0  │ 100.00%  │
+    │ insurance_policy     │    120 │    120 │      0  │ 100.00%  │
+    │ invoice              │    120 │    120 │      0  │ 100.00%  │
+    │ loan_agreement       │    100 │    100 │      0  │ 100.00%  │
+    │ other                │    120 │    120 │      0  │ 100.00%  │
+    │ profit_loss          │    100 │    100 │      0  │ 100.00%  │
+    │ purchase_order       │    120 │    120 │      0  │ 100.00%  │
+    │ salary_slip          │     97 │     97 │      0  │ 100.00%  │
+    │ tax_return           │     86 │     86 │      0  │ 100.00%  │
+    └──────────────────────┴────────┴────────┴─────────┴──────────┘
+
+    MISCLASSIFICATIONS (3 total out of 1,345):
+    - 2 bank_statement samples misclassified as check
+    - 1 cash_flow sample misclassified as balance_sheet
+
+    MODEL ARTIFACTS:
+        Vectorizer:   backend/app/ml/classification/vectorizer.joblib
+        Classifier:   backend/app/ml/classification/classifier.joblib
+        Metadata:     backend/app/ml/classification/metadata.json
+
+FILES:
+    backend/
+        app/ml/classifier.py                   — Classical ML DocumentClassifier
+        app/ml/classification/trainer.py       — Model training pipeline
+        app/ml/classification/heuristics.py    — FinancialHeuristicClassifier
+        app/services/classification_service.py — Hybrid arbitration service
+        app/ml/classification/vectorizer.joblib — Trained TF-IDF vectorizer
+        app/ml/classification/classifier.joblib — Trained LR classifier
+        app/ml/classification/metadata.json    — Training metrics & config
+
+
+────────────────────────────────────────────────────────────────────
+PHASE 5 — DOMAIN FIELD EXTRACTION ENGINE
 ────────────────────────────────────────────────────────────────────
 
 OBJECTIVE:
-    Extract structured fields from document text using deterministic
-    regex patterns. Fields vary by document type.
+    Extract structured domain fields from document text using specialized
+    pattern extractors and deterministic number normalizers.
 
-EXTRACTED FIELDS BY TYPE:
-    Invoice:
-        - Invoice Number, Date, Due Date
-        - Vendor Name, Vendor Address
-        - Total Amount, Tax Amount, Subtotal
-        - Currency, PO Number
+DOMAIN EXTRACTORS (ExtractionRegistry):
+    - InvoiceExtractor:
+        * Invoice #, Date, Due Date, Vendor, Subtotal, Tax/GST, Total
+    - BankStatementExtractor:
+        * Account Number, Bank Name, IFSC, Opening Balance, Closing Balance,
+        * Total Deposits, Total Withdrawals
+    - SalarySlipExtractor:
+        * Employee ID, Basic Pay, Gross Earnings, Total Deductions, Net Salary
+    - UtilityBillExtractor:
+        * Consumer #, Meter #, Units Consumed (kWh), Due Date, Total Due
+    - ReceiptExtractor:
+        * Receipt #, Subtotal, Tax, Total Amount Paid
+    - PurchaseOrderExtractor:
+        * PO #, Order Date, Vendor, Deliver To, Total Value
+    - TaxDocumentExtractor:
+        * PAN Number, Assessment Year, Gross Income, TDS Deducted
+    - GeneralFinancialExtractor:
+        * Safe universal fallback extractor
 
-    Receipt:
-        - Store Name, Date, Total, Tax
-        - Payment Method, Card Last 4
-
-    Bank Statement:
-        - Account Number, Account Name
-        - Statement Period, Opening/Closing Balance
-        - Total Deposits, Total Withdrawals
+FILES:
+    backend/
+        app/ml/extraction/registry.py             — Dynamic extractor registry
+        app/ml/extraction/financial_extractors.py — Domain extractors
+        app/ml/extraction/invoice_extractor.py    — Invoice extractor
+        app/ml/extraction/normalizers.py          — Currency/date normalizer
 
     Contract:
         - Parties, Effective Date, Expiry Date
