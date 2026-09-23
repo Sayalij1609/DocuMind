@@ -33,6 +33,8 @@ import {
   Search,
   Download,
   ChevronDown,
+  Building2,
+  ListChecks,
 } from 'lucide-react';
 import {
   getDocumentAnalysis,
@@ -253,6 +255,14 @@ export default function DocumentDetailPage() {
   const aiValidationSummary = ai.validation_summary || '';
   const aiDuplicateAssessment = ai.duplicate_assessment || '';
   const aiAnomalyAssessment = ai.anomaly_assessment || '';
+  const aiRiskNarrative = ai.risk_narrative || '';
+  const aiProfile = ai.complete_document_profile || {};
+  const aiParties = aiEntities.parties || [];
+  const aiIdentifiers = aiEntities.identifiers || [];
+  const aiDates = aiEntities.dates || [];
+  const aiFinancials = aiEntities.financials || {};
+  const aiKeyFindings = aiProfile.key_findings || [];
+  const aiRecommendations = aiProfile.recommendations || [];
 
   // Computed Audit Values
   const totalAmountVal =
@@ -287,16 +297,63 @@ export default function DocumentDetailPage() {
     analysis.extraction?.fields?.date?.value ??
     null;
 
+  const accountNoVal =
+    aiEntities.identifiers?.find((i) => /account|a\/c/i.test(i.type))?.value ??
+    analysis.extraction?.fields?.account_number?.value ??
+    null;
+
+  const employeeIdVal =
+    aiEntities.identifiers?.find((i) => /employee|emp/i.test(i.type))?.value ??
+    analysis.extraction?.fields?.employee_id?.value ??
+    null;
+
+  const consumerNoVal =
+    aiEntities.identifiers?.find((i) => /consumer|meter|ca/i.test(i.type))?.value ??
+    analysis.extraction?.fields?.consumer_number?.value ??
+    analysis.extraction?.fields?.meter_number?.value ??
+    null;
+
+  const customerVal =
+    aiEntities.parties?.find((p) => /customer|recipient|buyer|client/i.test(p.role))?.name ??
+    analysis.extraction?.fields?.customer_name?.value ??
+    analysis.extraction?.fields?.client_name?.value ??
+    null;
+
+  const dueDateVal =
+    aiEntities.dates?.find((d) => /due/i.test(d.type))?.value ??
+    analysis.extraction?.fields?.due_date?.value ??
+    null;
+
+  const subtotalVal =
+    aiFinancials?.subtotal ??
+    aiFinValidation?.subtotal ??
+    analysis.extraction?.fields?.subtotal?.value ??
+    null;
+
+  const taxVal =
+    aiFinancials?.tax ??
+    aiFinValidation?.tax ??
+    analysis.extraction?.fields?.tax_amount?.value ??
+    analysis.extraction?.fields?.tax?.value ??
+    null;
+
+  const discountVal =
+    aiFinancials?.discount ??
+    aiFinValidation?.discount ??
+    analysis.extraction?.fields?.discount?.value ??
+    null;
+
   const isUploadedOnly = analysis.status === 'uploaded';
   const isProcessing = analysis.status === 'processing';
 
   const options = [
     {
       id: 'overview',
-      label: 'Audit Summary',
+      label: 'Complete Summary',
       icon: FileCheck,
-      badge: null,
-      desc: 'Executive Briefing & Key Entities',
+      badge: 'All-in-One',
+      badgeType: 'primary',
+      desc: 'Executive Briefing, Profile & Insights',
     },
     {
       id: 'fields',
@@ -765,46 +822,333 @@ export default function DocumentDetailPage() {
 
           {/* 3. Detailed Component Content View */}
           <div className="clean-content-panel animate-fade-in">
-            {/* OPTION 1: AUDIT SUMMARY */}
+            {/* OPTION 1: COMPLETE SUMMARY & DOCUMENT ANALYSIS */}
             {activeSection === 'overview' && (
-              <div className="panel-section">
+              <div className="panel-section complete-summary-panel">
                 <div className="panel-header">
                   <div className="panel-title-wrap">
-                    <FileCheck size={20} className="panel-icon text-primary" />
+                    <FileCheck size={22} className="panel-icon text-primary" />
                     <div>
-                      <h3 className="panel-title">Executive Audit Briefing</h3>
-                      <p className="panel-desc">Structural evaluation, detected counterparty roles, and synthesized findings</p>
+                      <h3 className="panel-title">Complete Document Analysis & Executive Summary</h3>
+                      <p className="panel-desc">
+                        Comprehensive audit profile, executive summary, risk evaluation, party mapping, and compliance verification
+                      </p>
                     </div>
+                  </div>
+                  <div className="analysis-engine-badge">
+                    <Sparkles size={14} className="text-accent" />
+                    <span>
+                      {ai.analysis_method === 'groq_llm'
+                        ? 'Groq LLM Neural Engine'
+                        : 'Smart Heuristic Audit Engine'}
+                    </span>
                   </div>
                 </div>
 
-                <div className="panel-body">
-                  <div className="audit-brief-card">
-                    <p className="audit-brief-text">
-                      {ai.executive_summary ||
-                        `This is a ${analysis.document_type || 'unclassified'} document (${analysis.filename}). Automated audits have extracted ${fieldEntries.length} fields with standard validation rules applied.`}
+                <div className="panel-body complete-summary-body">
+                  {/* 1. Document Purpose & Classification Card */}
+                  <div className="doc-purpose-card card">
+                    <div className="purpose-header">
+                      <div className="purpose-title-wrap">
+                        <Info size={16} className="text-primary" />
+                        <h4 className="purpose-heading">Document Purpose & Context</h4>
+                      </div>
+                      <div className="purpose-meta-pills">
+                        <span className="purpose-pill">
+                          Class: <strong>{(analysis.document_type || 'Unclassified').replace(/_/g, ' ').toUpperCase()}</strong>
+                        </span>
+                        {analysis.classification_confidence != null && (
+                          <span className="purpose-pill">
+                            Confidence: <strong>{(analysis.classification_confidence * 100).toFixed(1)}%</strong>
+                          </span>
+                        )}
+                        <span className="purpose-pill">
+                          Status: <strong>{(analysis.status || 'Processed').toUpperCase()}</strong>
+                        </span>
+                      </div>
+                    </div>
+                    <p className="purpose-text">
+                      {aiProfile.document_purpose ||
+                        `This ${analysis.document_type || 'document'} (${analysis.filename}) serves as a verified transaction and operational record within the enterprise financial pipeline.`}
                     </p>
                   </div>
 
-                  {aiRelationships.length > 0 && (
-                    <div className="audit-roles-section">
-                      <h4 className="sub-heading">Detected Counterparty Roles</h4>
-                      <div className="roles-tags-wrap">
-                        {aiRelationships.map((rel, i) => (
-                          <div key={i} className="counterparty-role-tag">
-                            <span className="entity-text">{rel.entity}</span>
-                            <ArrowRight size={12} className="role-arrow" />
-                            <span className="role-text">{rel.role}</span>
+                  {/* 2. Executive Summary */}
+                  <div className="summary-block">
+                    <div className="summary-block-header">
+                      <h4 className="sub-heading">
+                        <FileText size={16} className="text-primary" /> Executive Audit Narrative
+                      </h4>
+                      <button
+                        className="btn-copy-small"
+                        onClick={() => handleCopyText(ai.executive_summary || '')}
+                        title="Copy Summary"
+                      >
+                        {copied ? <Check size={12} /> : <Clipboard size={12} />}
+                        <span>{copied ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                    <div className="audit-brief-card">
+                      <p className="audit-brief-text">
+                        {ai.executive_summary ||
+                          `This document has been classified as ${analysis.document_type || 'unclassified'} (${analysis.filename}). Automated audits have extracted ${fieldEntries.length} fields with standard validation rules applied.`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 3. Fiscal Risk & Integrity Evaluation */}
+                  {(aiRiskNarrative || analysis.is_anomaly != null) && (
+                    <div className="summary-block">
+                      <h4 className="sub-heading">
+                        <AlertTriangle size={16} className={analysis.is_anomaly ? "text-danger" : "text-amber"} /> Fiscal Risk & Integrity Assessment
+                      </h4>
+                      <div className={`risk-evaluation-banner ${analysis.is_anomaly ? 'risk-elevated' : 'risk-nominal'}`}>
+                        <div className="risk-banner-header">
+                          <div className="risk-icon-wrap">
+                            <ShieldCheck size={20} />
+                          </div>
+                          <div>
+                            <strong>
+                              {analysis.is_anomaly
+                                ? 'Elevated Fiscal / Outlier Risk Profile'
+                                : 'Standard Risk Level — Verification Audit Complete'}
+                            </strong>
+                            <span className="risk-banner-sub">
+                              {analysis.is_anomaly
+                                ? 'Document exhibits statistical variance from normal distribution.'
+                                : 'Key identifiers, dates, and amounts reconcile with standard business conventions.'}
+                            </span>
+                          </div>
+                        </div>
+                        {aiRiskNarrative && (
+                          <div className="risk-banner-text">
+                            {aiRiskNarrative}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Key Findings Cards */}
+                  {aiKeyFindings.length > 0 && (
+                    <div className="summary-block">
+                      <h4 className="sub-heading">
+                        <Sparkles size={16} className="text-accent" /> Key Extracted Findings
+                      </h4>
+                      <div className="key-findings-grid">
+                        {aiKeyFindings.map((finding, idx) => (
+                          <div key={idx} className="finding-card">
+                            <div className="finding-badge">{idx + 1}</div>
+                            <span className="finding-text">{finding}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {aiInsights.length > 0 && (
-                    <div className="audit-insights-section">
+                  {/* 5. Financial Overview & Structure */}
+                  <div className="summary-block">
+                    <h4 className="sub-heading">
+                      <Calculator size={16} className="text-teal" /> Financial Structure & Reconciliation
+                    </h4>
+                    <div className="financial-overview-card card">
+                      {aiProfile.financial_overview && (
+                        <p className="financial-overview-narrative">
+                          {aiProfile.financial_overview}
+                        </p>
+                      )}
+                      <div className="financial-metrics-row">
+                        <div className="fin-metric-cell highlight">
+                          <span className="fin-metric-label">Gross Total</span>
+                          <strong className="fin-metric-value text-accent">
+                            {totalAmountVal != null ? formatRupees(totalAmountVal) : '—'}
+                          </strong>
+                          <span className="fin-metric-sub">{aiFinancials.currency || 'INR (₹)'}</span>
+                        </div>
+                        <div className="fin-metric-cell">
+                          <span className="fin-metric-label">Subtotal</span>
+                          <strong className="fin-metric-value">
+                            {subtotalVal != null ? formatRupees(subtotalVal) : '—'}
+                          </strong>
+                          <span className="fin-metric-sub">Before tax & disc.</span>
+                        </div>
+                        <div className="fin-metric-cell">
+                          <span className="fin-metric-label">Tax / GST</span>
+                          <strong className="fin-metric-value">
+                            {taxVal != null ? formatRupees(taxVal) : '—'}
+                          </strong>
+                          <span className="fin-metric-sub">Statutory levy</span>
+                        </div>
+                        <div className="fin-metric-cell">
+                          <span className="fin-metric-label">Arithmetic Verification</span>
+                          <strong className={`fin-metric-value ${aiFinValidation.is_valid === true ? 'text-success' : aiFinValidation.is_valid === false ? 'text-danger' : ''}`}>
+                            {aiFinValidation.is_valid === true ? '✓ Reconciled' : aiFinValidation.is_valid === false ? '⚠ Discrepancy' : 'Audited'}
+                          </strong>
+                          <span className="fin-metric-sub">Line items sum</span>
+                        </div>
+                      </div>
+                      {aiFinValidation.notes && (
+                        <div className="financial-reconcile-notes">
+                          <Info size={13} className="text-muted" />
+                          <span>{aiFinValidation.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 6. Entity & Counterparty Details */}
+                  {(aiParties.length > 0 || aiRelationships.length > 0 || vendorVal || customerVal) && (
+                    <div className="summary-block">
                       <h4 className="sub-heading">
-                        <Lightbulb size={15} /> Key Audit Observations
+                        <Building2 size={16} className="text-primary" /> Parties & Counterparty Mapping
+                      </h4>
+                      {aiParties.length > 0 ? (
+                        <div className="parties-grid">
+                          {aiParties.map((party, idx) => (
+                            <div key={idx} className="party-card card">
+                              <div className="party-header">
+                                <span className="party-role-badge capitalize">{party.role || 'Counterparty'}</span>
+                                {party.tax_id && (
+                                  <span className="party-tax-badge mono">Tax ID: {party.tax_id}</span>
+                                )}
+                              </div>
+                              <h5 className="party-name">{party.name || 'Unnamed Party'}</h5>
+                              {party.address && <p className="party-detail">📍 {party.address}</p>}
+                              {party.contact && <p className="party-detail">📞 {party.contact}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        aiRelationships.length > 0 && (
+                          <div className="roles-tags-wrap">
+                            {aiRelationships.map((rel, i) => (
+                              <div key={i} className="counterparty-role-tag">
+                                <span className="entity-text">{rel.entity}</span>
+                                <ArrowRight size={12} className="role-arrow" />
+                                <span className="role-text">{rel.role}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                  {/* 7. Document Identifiers & Key Dates */}
+                  <div className="summary-block">
+                    <h4 className="sub-heading">
+                      <Tag size={16} className="text-purple" /> Primary Identifiers & Chronology
+                    </h4>
+                    <div className="identifiers-dates-grid">
+                      {/* Left: Identifiers */}
+                      <div className="id-subcard card">
+                        <h5 className="id-subcard-title">Document Reference Identifiers</h5>
+                        <div className="tid-table">
+                          <div className="tid-row">
+                            <span className="tid-key">Document Type</span>
+                            <span className="tid-val capitalize">{analysis.document_type || 'Unclassified'}</span>
+                          </div>
+                          {invoiceNoVal && (
+                            <div className="tid-row">
+                              <span className="tid-key">Invoice / Ref #</span>
+                              <span className="tid-val mono">{invoiceNoVal}</span>
+                            </div>
+                          )}
+                          {poNoVal && (
+                            <div className="tid-row">
+                              <span className="tid-key">Purchase Order #</span>
+                              <span className="tid-val mono">{poNoVal}</span>
+                            </div>
+                          )}
+                          {accountNoVal && (
+                            <div className="tid-row">
+                              <span className="tid-key">Account #</span>
+                              <span className="tid-val mono">{accountNoVal}</span>
+                            </div>
+                          )}
+                          {employeeIdVal && (
+                            <div className="tid-row">
+                              <span className="tid-key">Employee ID</span>
+                              <span className="tid-val mono">{employeeIdVal}</span>
+                            </div>
+                          )}
+                          {consumerNoVal && (
+                            <div className="tid-row">
+                              <span className="tid-key">Consumer / Meter #</span>
+                              <span className="tid-val mono">{consumerNoVal}</span>
+                            </div>
+                          )}
+                          {vendorVal && (
+                            <div className="tid-row">
+                              <span className="tid-key">Vendor / Issuer</span>
+                              <span className="tid-val">{vendorVal}</span>
+                            </div>
+                          )}
+                          {customerVal && (
+                            <div className="tid-row">
+                              <span className="tid-key">Recipient / Client</span>
+                              <span className="tid-val">{customerVal}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Key Dates */}
+                      <div className="id-subcard card">
+                        <h5 className="id-subcard-title">Transaction Chronology</h5>
+                        <div className="tid-table">
+                          {primaryDateVal && (
+                            <div className="tid-row">
+                              <span className="tid-key">Primary Date</span>
+                              <span className="tid-val">{primaryDateVal}</span>
+                            </div>
+                          )}
+                          {dueDateVal && (
+                            <div className="tid-row">
+                              <span className="tid-key">Due Date</span>
+                              <span className="tid-val">{dueDateVal}</span>
+                            </div>
+                          )}
+                          {aiDates.length > 0 ? (
+                            aiDates.slice(0, 4).map((d, i) => (
+                              <div key={i} className="tid-row">
+                                <span className="tid-key capitalize">{(d.type || 'Date').replace(/_/g, ' ')}</span>
+                                <span className="tid-val">{d.value}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="tid-row">
+                              <span className="tid-key">Uploaded Timestamp</span>
+                              <span className="tid-val">{new Date(analysis.created_at).toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 8. Actionable Recommendations */}
+                  {aiRecommendations.length > 0 && (
+                    <div className="summary-block">
+                      <h4 className="sub-heading">
+                        <ListChecks size={16} className="text-accent" /> Actionable Audit Recommendations
+                      </h4>
+                      <div className="recommendations-list">
+                        {aiRecommendations.map((rec, i) => (
+                          <div key={i} className="rec-card">
+                            <CheckCircle2 size={16} className="rec-icon text-accent" />
+                            <span className="rec-text">{rec}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 9. Key Audit Observations */}
+                  {aiInsights.length > 0 && (
+                    <div className="summary-block">
+                      <h4 className="sub-heading">
+                        <Lightbulb size={16} className="text-amber" /> Operational Audit Observations
                       </h4>
                       <div className="insights-grid">
                         {aiInsights.map((insight, i) => (
@@ -817,34 +1161,50 @@ export default function DocumentDetailPage() {
                     </div>
                   )}
 
-                  <div className="transaction-ids-card">
-                    <h4 className="sub-heading">Primary Transaction Identifiers</h4>
-                    <div className="tid-table">
-                      <div className="tid-row">
-                        <span className="tid-key">Document Type</span>
-                        <span className="tid-val capitalize">{analysis.document_type || 'Unclassified'}</span>
+                  {/* 10. System Compliance & Verification Synopsis */}
+                  <div className="summary-block">
+                    <h4 className="sub-heading">
+                      <ShieldCheck size={16} className="text-teal" /> Multi-Layer System Verification Synopsis
+                    </h4>
+                    <div className="synopsis-grid">
+                      <div className="synopsis-card card">
+                        <div className="synopsis-header">
+                          <ShieldCheck size={18} className="text-teal" />
+                          <span className="synopsis-title">Deterministic Compliance</span>
+                        </div>
+                        <p className="synopsis-body">
+                          {aiProfile.compliance_status ||
+                            aiValidationSummary ||
+                            (validation?.error_count === 0
+                              ? 'All deterministic business compliance rules passed successfully.'
+                              : `${validation?.error_count} rule error(s) flagged during automated check.`)}
+                        </p>
                       </div>
-                      <div className="tid-row">
-                        <span className="tid-key">Gross Total</span>
-                        <span className="tid-val text-accent font-bold">
-                          {totalAmountVal != null ? formatRupees(totalAmountVal) : '—'}
-                        </span>
+
+                      <div className="synopsis-card card">
+                        <div className="synopsis-header">
+                          <Copy size={18} className="text-blue" />
+                          <span className="synopsis-title">Uniqueness Verification</span>
+                        </div>
+                        <p className="synopsis-body">
+                          {aiDuplicateAssessment ||
+                            (duplicates?.has_duplicates
+                              ? `${duplicates.matches?.length || 0} potential duplicate match(es) detected across repository.`
+                              : 'Document has been verified as a unique transaction record.')}
+                        </p>
                       </div>
-                      <div className="tid-row">
-                        <span className="tid-key">Invoice / Ref #</span>
-                        <span className="tid-val mono">{invoiceNoVal || '—'}</span>
-                      </div>
-                      <div className="tid-row">
-                        <span className="tid-key">Purchase Order (PO)</span>
-                        <span className="tid-val mono">{poNoVal || '—'}</span>
-                      </div>
-                      <div className="tid-row">
-                        <span className="tid-key">Vendor / Issuer</span>
-                        <span className="tid-val">{vendorVal || '—'}</span>
-                      </div>
-                      <div className="tid-row">
-                        <span className="tid-key">Primary Date</span>
-                        <span className="tid-val">{primaryDateVal || '—'}</span>
+
+                      <div className="synopsis-card card">
+                        <div className="synopsis-header">
+                          <AlertTriangle size={18} className={anomaly?.is_anomaly ? "text-danger" : "text-success"} />
+                          <span className="synopsis-title">Statistical Anomaly Scan</span>
+                        </div>
+                        <p className="synopsis-body">
+                          {aiAnomalyAssessment ||
+                            (anomaly?.is_anomaly
+                              ? 'Isolation Forest model flagged feature metrics as statistical outliers.'
+                              : 'Evaluated feature vectors align within standard historical clustering.')}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1142,6 +1502,16 @@ export default function DocumentDetailPage() {
                 </div>
 
                 <div className="panel-body">
+                  {aiDuplicateAssessment && (
+                    <div className="ai-narrative-card">
+                      <Sparkles size={16} className="text-accent" />
+                      <div>
+                        <strong>AI Uniqueness & Repository Assessment</strong>
+                        <p>{aiDuplicateAssessment}</p>
+                      </div>
+                    </div>
+                  )}
+
                   {duplicates?.has_duplicates ? (
                     <div className="clean-table-card">
                       <table className="clean-data-table">
@@ -1203,6 +1573,26 @@ export default function DocumentDetailPage() {
                 </div>
 
                 <div className="panel-body">
+                  {aiAnomalyAssessment && (
+                    <div className="ai-narrative-card">
+                      <Sparkles size={16} className="text-accent" />
+                      <div>
+                        <strong>AI Anomaly & Outlier Assessment</strong>
+                        <p>{aiAnomalyAssessment}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {aiRiskNarrative && (
+                    <div className="ai-narrative-card" style={{ borderColor: 'rgba(239, 68, 68, 0.25)', background: 'rgba(239, 68, 68, 0.04)' }}>
+                      <AlertTriangle size={16} className="text-danger" />
+                      <div>
+                        <strong>Fiscal Risk & Integrity Narrative</strong>
+                        <p>{aiRiskNarrative}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className={`status-banner-card ${anomaly?.is_anomaly ? 'banner-danger' : 'banner-success'}`}>
                     <div className="banner-icon-wrap">
                       {anomaly?.is_anomaly ? <AlertTriangle size={24} /> : <CheckCircle2 size={24} />}

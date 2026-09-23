@@ -18,6 +18,8 @@ import {
   FileSpreadsheet,
   Zap,
   Calculator,
+  Landmark,
+  TrendingUp,
 } from 'lucide-react';
 import './HomePage.css';
 
@@ -26,11 +28,15 @@ export default function HomePage() {
 
   const supportedDocs = [
     { name: 'Invoices', desc: 'B2B & Vendor tax bills', icon: FileText, tag: 'Line-item extraction' },
+    { name: 'Bank Statements', desc: 'Financial audit trails', icon: Building2, tag: 'Debit & credit balances' },
+    { name: 'Salary Slips', desc: 'Payroll & pay advices', icon: Landmark, tag: 'Gross, net & deductions' },
     { name: 'Receipts', desc: 'POS & expense slips', icon: Receipt, tag: 'Merchant & totals' },
     { name: 'Purchase Orders', desc: 'Procurement contracts', icon: FileCheck, tag: 'SKU & order terms' },
-    { name: 'Bank Statements', desc: 'Financial audit trails', icon: Building2, tag: 'Debit & credit balances' },
-    { name: 'Insurance Claims', desc: 'Policy & incident forms', icon: ShieldCheck, tag: 'Coverage & claim IDs' },
     { name: 'Utility & Bills', desc: 'Energy & service slips', icon: FileSpreadsheet, tag: 'Due dates & meters' },
+    { name: 'Tax Documents', desc: 'Form 16 & returns', icon: FileSpreadsheet, tag: 'PAN & TDS computations' },
+    { name: 'Insurance Claims', desc: 'Policy & incident forms', icon: ShieldCheck, tag: 'Coverage & claim IDs' },
+    { name: 'Credit & Debit Notes', desc: 'Adjustment memos', icon: Calculator, tag: 'Dispute & refund notes' },
+    { name: 'Financial Statements', desc: 'P&L & Balance sheets', icon: TrendingUp, tag: 'Ledger reconciliation' },
   ];
 
   const capabilities = [
