@@ -15,21 +15,21 @@
                                   │
                                   ▼
                     ┌─────────────────────────────┐
-                    │   1. OCR Text Extraction     │
-                    │      (Tesseract v5.5.3)      │
+                    │   1. OCR Text Extraction    │
+                    │      (Tesseract v5.5.3)     │
                     └──────────────┬──────────────┘
                                   │
                                   ▼
                     ┌─────────────────────────────┐
-                    │   2. OCR Error Correction    │
-                    │      (Groq LLM / Regex)      │
+                    │   2. OCR Error Correction   │
+                    │      (Groq LLM / Regex)     │
                     └──────────────┬──────────────┘
                                   │
                                   ▼
                     ┌─────────────────────────────┐
-                    │   3. ML Classification       │
-                    │   TF-IDF + Logistic Reg.     │
-                    │   (13 Financial Categories)  │
+                    │   3. ML Classification      │
+                    │   TF-IDF + Logistic Reg.    │
+                    │   (13 Financial Categories) │
                     └──────────────┬──────────────┘
                                   │
                     ┌─────────────┼─────────────┐
@@ -43,8 +43,8 @@
                  └─────────────┼─────────────┘
                                ▼
                  ┌─────────────────────────────┐
-                 │  7. Anomaly Detection        │
-                 │     (Isolation Forest)       │
+                 │  7. Anomaly Detection       │
+                 │     (Isolation Forest)      │
                  └──────────────┬──────────────┘
                                │
                  ┌─────────────┼─────────────┐
@@ -52,14 +52,14 @@
           ┌──────────┐  ┌──────────┐  ┌──────────┐
           │8. AI     │  │9. RAG    │  │10. PDF   │
           │Semantic  │  │Indexing  │  │Report    │
-          │Analysis  │  │& Q&A    │  │Generator │
-          │(Groq LLM)│  │(Vectors)│  │(FPDF2)  │
+          │Analysis  │  │& Q&A     │  │Generator │
+          │(Groq LLM)│  │(Vectors) │  │(FPDF2)   │
           └──────────┘  └──────────┘  └──────────┘
                                │
                                ▼
                     ┌─────────────────────────────┐
-                    │     PostgreSQL Database      │
-                    │  (Documents, Results, Index) │
+                    │     PostgreSQL Database     │
+                    │  (Documents, Results, Index)│
                     └─────────────────────────────┘
 ```
 
@@ -406,7 +406,7 @@ docker-compose up --build -d
 ## Project Structure
 
 ```
-Nexora/
+Documind/
 ├── backend/
 │   ├── app/
 │   │   ├── api/            # FastAPI route handlers
